@@ -153,6 +153,13 @@ public:
     std::atomic<double> playPeakDbSum { 0.0 };
     std::atomic<int> playPeakCount { 0 };
 
+    // --- Stream tap: a copy of the finished sound for a second output (the app's "Stream" to Discord).
+    //     The audio thread writes, the stream device's thread reads. Off = no cost. ---
+    static constexpr int streamFifoSize = 1 << 15;
+    std::atomic<bool> streamTapOn { false };
+    juce::AbstractFifo streamFifo { streamFifoSize };
+    std::vector<float> streamBufL = std::vector<float> ((size_t) streamFifoSize), streamBufR = std::vector<float> ((size_t) streamFifoSize);
+
     // --- User presets (call from the message thread) ---
     static juce::File getUserPresetFolder();
     juce::Array<juce::File> getUserPresets() const;

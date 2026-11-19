@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
-project(EmberAmp VERSION 1.0.0)
+project(EmberAmp VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,7 +39,8 @@ juce_add_plugin(EmberAmp
 
 target_sources(EmberAmp PRIVATE
     Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp)
+    Source/PluginEditor.cpp
+    Source/StreamOutput.cpp)
 
 juce_add_binary_data(EmberAmpAssets SOURCES Resources/logo.png)
 

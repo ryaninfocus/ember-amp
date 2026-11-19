@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
+#include "StreamOutput.h"
 
 #if JucePlugin_Build_Standalone
  #include <juce_audio_devices/juce_audio_devices.h>
@@ -1077,6 +1078,31 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
             latencyLabel.setMinimumHorizontalScale (0.75f);
             addAndMakeVisible (latencyLabel);
             refreshLatencyUI();
+
+            // Stream: a second copy of the sound (plus an optional mic) for Discord & co.
+            stream = std::make_unique<StreamOutput> (p);
+            setAccent (streamSwitch, juce::Colour (0xff7f8cff));
+            streamSwitch.setTooltip ("Send Ember Amp (and your mic) to Discord, OBS or Zoom through a virtual cable");
+            streamSwitch.onClick = [this]
+            {
+                streamWanted = streamSwitch.getToggleState();
+                if (streamWanted) startStream (true);
+                else              stopStream();
+                saveStreamSettings();
+            };
+            addAndMakeVisible (streamSwitch);
+            streamMoreButton.setButtonText ("...");
+            streamMoreButton.setTooltip ("Stream settings");
+            streamMoreButton.onClick = [this] { showStreamPanel(); };
+            addAndMakeVisible (streamMoreButton);
+            if (auto* settings = holder->settings.get())
+            {
+                stream->guitarGain = juce::Decibels::decibelsToGain ((float) settings->getDoubleValue ("emberStreamGuitarDb", 0.0));
+                stream->micGain    = juce::Decibels::decibelsToGain ((float) settings->getDoubleValue ("emberStreamMicDb", 0.0));
+                streamWanted = settings->getBoolValue ("emberStreamOn", false);
+            }
+            if (streamWanted) startStream (false);
+            streamSwitch.setToggleState (streamWanted, juce::dontSendNotification);
         }
    #endif
 
@@ -1094,6 +1120,7 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
 EmberAmpEditor::~EmberAmpEditor()
 {
     stopTimer();
+    stream.reset();
    #if JucePlugin_Build_Standalone
     if (isStandalone)
         if (auto* dm = getStandaloneDeviceManager())
@@ -1145,6 +1172,10 @@ void EmberAmpEditor::changeListenerCallback (juce::ChangeBroadcaster*)
     saveStandaloneState (true);
     lastDeviceKey.clear();
     refreshLatencyUI();
+
+    // your interface changed (rate, input...): reopen the stream to match
+    if (streamWanted)
+        startStream (false);
 }
 
 void EmberAmpEditor::saveStandaloneState (bool includeDevice)
@@ -1281,6 +1312,10 @@ void EmberAmpEditor::resized()
             latencyLabel.setBounds (sb.removeFromLeft (70));
             sb.removeFromLeft (8);
             inputChannelBox.setBounds (sb.removeFromLeft (118));
+            sb.removeFromLeft (20);
+            streamSwitch.setBounds (sb.removeFromLeft (104));
+            sb.removeFromLeft (4);
+            streamMoreButton.setBounds (sb.removeFromLeft (34));
         }
     }
 
@@ -1618,6 +1653,271 @@ void EmberAmpEditor::timerCallback()
         pedalsPage.refresh();
     }
 
+   #if JucePlugin_Build_Standalone
+    // Stream: keep it matched to your interface's sample rate, and retry if its device went away
+    if (stream != nullptr && streamWanted && frameCounter % 90 == 45)
+        if (auto* dm = getStandaloneDeviceManager())
+            if (auto* dev = dm->getCurrentAudioDevice())
+                if (! stream->isRunning() || std::abs (stream->getSampleRate() - dev->getCurrentSampleRate()) > 1.0)
+                    startStream (false);
+   #endif
+
     if (++frameCounter % 2 == 0)
         tuner.setFrequency (detectPitch());
+}
+
+//==============================================================================
+// Stream to Discord
+#if JucePlugin_Build_Standalone
+class StreamPanel : public juce::Component, private juce::Timer
+{
+public:
+    explicit StreamPanel (EmberAmpEditor& e) : ed (e)
+    {
+        auto* settings = juce::StandalonePluginHolder::getInstance()->settings.get();
+
+        title.setText ("STREAM TO DISCORD", juce::dontSendNotification);
+        title.setFont (spaced (14.0f, true, 0.2f));
+        addAndMakeVisible (title);
+        info.setText ("Sends Ember Amp (and your mic) to a virtual cable. In Discord, pick that cable as your "
+                      "microphone and turn off Noise Suppression, Echo Cancellation and Automatic Gain Control.",
+                      juce::dontSendNotification);
+        info.setFont (juce::FontOptions (13.0f));
+        info.setColour (juce::Label::textColourId, Palette::text.withAlpha (0.75f));
+        info.setJustificationType (juce::Justification::topLeft);
+        addAndMakeVisible (info);
+
+        for (auto* l : { &sendLabel, &micLabel, &guitarLabel, &micLevelLabel })
+        {
+            l->setFont (spaced (11.5f, true, 0.15f));
+            l->setColour (juce::Label::textColourId, Palette::muted);
+            addAndMakeVisible (l);
+        }
+        sendLabel.setText ("SEND TO", juce::dontSendNotification);
+        micLabel.setText ("MIC", juce::dontSendNotification);
+        guitarLabel.setText ("AMP LEVEL", juce::dontSendNotification);
+        micLevelLabel.setText ("MIC LEVEL", juce::dontSendNotification);
+
+        // outputs: the virtual cable first
+        const auto cable = StreamOutput::findVirtualCable();
+        const auto saved = settings != nullptr ? settings->getValue ("emberStreamDevice") : juce::String();
+        outputs = StreamOutput::listDevices (false);
+        for (int i = 0; i < outputs.size(); ++i)
+            sendBox.addItem (outputs[i] + (outputs[i] == cable ? "  (virtual cable)" : ""), i + 1);
+        const int pick = outputs.indexOf (saved.isNotEmpty() ? saved : cable);
+        if (pick >= 0) sendBox.setSelectedId (pick + 1, juce::dontSendNotification);
+        else           sendBox.setText ("Install a virtual cable first", juce::dontSendNotification);
+        sendBox.onChange = [this] { apply(); };
+        addAndMakeVisible (sendBox);
+
+        // mic: another input on your interface
+        micBox.addItem ("Off - guitar only", 1);
+        int numIns = 0;
+        if (auto* dev = juce::StandalonePluginHolder::getInstance()->deviceManager.getCurrentAudioDevice())
+            numIns = dev->getInputChannelNames().size();
+        for (int ch = 0; ch < juce::jmin (numIns, 8); ++ch)
+            micBox.addItem ("Input " + juce::String (ch + 1) + " of your interface", ch + 2);
+        const int micCh = settings != nullptr ? settings->getIntValue ("emberStreamMicCh", -1) : -1;
+        micBox.setSelectedId (micCh >= 0 && micCh < numIns ? micCh + 2 : 1, juce::dontSendNotification);
+        micBox.onChange = [this] { apply(); };
+        addAndMakeVisible (micBox);
+
+        for (auto* s : { &guitarLevel, &micLevel })
+        {
+            s->setSliderStyle (juce::Slider::LinearHorizontal);
+            s->setTextBoxStyle (juce::Slider::TextBoxRight, false, 64, 20);
+            s->setColour (juce::Slider::trackColourId, juce::Colour (0xff7f8cff));
+            s->setColour (juce::Slider::backgroundColourId, juce::Colours::white.withAlpha (0.1f));
+            s->setColour (juce::Slider::thumbColourId, juce::Colours::white);
+            s->setTextValueSuffix (" dB");
+            s->setNumDecimalPlacesToDisplay (1);
+            addAndMakeVisible (s);
+        }
+        guitarLevel.setRange (-24.0, 12.0, 0.5);
+        micLevel.setRange (-24.0, 24.0, 0.5);
+        guitarLevel.setValue (juce::Decibels::gainToDecibels (ed.stream->guitarGain.load()), juce::dontSendNotification);
+        micLevel.setValue (juce::Decibels::gainToDecibels (ed.stream->micGain.load()), juce::dontSendNotification);
+        guitarLevel.setDoubleClickReturnValue (true, 0.0);
+        micLevel.setDoubleClickReturnValue (true, 0.0);
+        guitarLevel.onValueChange = [this] { ed.stream->guitarGain = juce::Decibels::decibelsToGain ((float) guitarLevel.getValue()); ed.saveStreamSettings(); };
+        micLevel.onValueChange    = [this] { ed.stream->micGain    = juce::Decibels::decibelsToGain ((float) micLevel.getValue());    ed.saveStreamSettings(); };
+
+        status.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        status.setJustificationType (juce::Justification::topLeft);
+        addAndMakeVisible (status);
+        getCable.setButtonText ("Get the free virtual cable");
+       #if JUCE_MAC
+        getCable.setURL (juce::URL ("https://existential.audio/blackhole/"));
+       #else
+        getCable.setURL (juce::URL ("https://vb-audio.com/Cable/"));
+       #endif
+        getCable.setFont (juce::FontOptions (13.0f), false, juce::Justification::centredLeft);
+        getCable.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff9aa4ff));
+        addAndMakeVisible (getCable);
+
+        setSize (420, 330);
+        timerCallback();
+        startTimerHz (10);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        // little level meters next to the status
+        auto m = meterArea.toFloat();
+        for (int k = 0; k < 2; ++k)
+        {
+            auto bar = m.removeFromTop (5.0f);
+            m.removeFromTop (4.0f);
+            g.setColour (juce::Colours::white.withAlpha (0.08f));
+            g.fillRoundedRectangle (bar, 2.0f);
+            const float db = juce::Decibels::gainToDecibels (k == 0 ? outLevel : micLevelShown, -60.0f);
+            g.setColour (k == 0 ? juce::Colour (0xff7f8cff) : Palette::good);
+            g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * juce::jlimit (0.0f, 1.0f, (db + 60.0f) / 60.0f)), 2.0f);
+        }
+        g.setColour (Palette::muted);
+        g.setFont (spaced (10.0f, true, 0.15f));
+        g.drawText ("TO DISCORD", meterArea.translated (0, -14).withHeight (12), juce::Justification::left);
+    }
+
+    void resized() override
+    {
+        auto r = getLocalBounds().reduced (18, 16);
+        title.setBounds (r.removeFromTop (22));
+        r.removeFromTop (4);
+        info.setBounds (r.removeFromTop (52));
+        r.removeFromTop (8);
+        auto row = [&r] (juce::Label& l, juce::Component& c)
+        {
+            auto line = r.removeFromTop (30);
+            l.setBounds (line.removeFromLeft (90));
+            c.setBounds (line);
+            r.removeFromTop (8);
+        };
+        row (sendLabel, sendBox);
+        row (micLabel, micBox);
+        row (guitarLabel, guitarLevel);
+        row (micLevelLabel, micLevel);
+        r.removeFromTop (4);
+        auto bottom = r.removeFromTop (40);
+        meterArea = bottom.removeFromRight (120).withTrimmedTop (16).withHeight (14);
+        status.setBounds (bottom.withTrimmedRight (10));
+        getCable.setBounds (r.removeFromTop (22));
+    }
+
+private:
+    void apply()
+    {
+        if (auto* settings = juce::StandalonePluginHolder::getInstance()->settings.get())
+        {
+            const int idx = sendBox.getSelectedId() - 1;
+            if (juce::isPositiveAndBelow (idx, outputs.size()))
+                settings->setValue ("emberStreamDevice", outputs[idx]);
+            settings->setValue ("emberStreamMicCh", micBox.getSelectedId() - 2);
+        }
+        if (ed.streamWanted)
+            ed.startStream (false);
+    }
+
+    void timerCallback() override
+    {
+        const auto text = ed.streamStatusText();
+        status.setText (text, juce::dontSendNotification);
+        status.setColour (juce::Label::textColourId, ed.stream->isRunning() ? Palette::good
+                                                                              : ed.streamError.isNotEmpty() ? juce::Colour (0xffff6a5c) : Palette::muted);
+        if (++ticks % 20 == 1)   // look for a newly installed cable every 2 s
+            getCable.setVisible (StreamOutput::findVirtualCable().isEmpty());
+        outLevel = juce::jmax (ed.stream->outPeak.exchange (0.0f), outLevel * 0.8f);
+        micLevelShown = juce::jmax (ed.stream->micPeak.exchange (0.0f), micLevelShown * 0.8f);
+        repaint (meterArea.expanded (2, 16));
+    }
+
+    EmberAmpEditor& ed;
+    juce::Label title, info, sendLabel, micLabel, guitarLabel, micLevelLabel, status;
+    juce::ComboBox sendBox, micBox;
+    juce::Slider guitarLevel, micLevel;
+    juce::HyperlinkButton getCable;
+    juce::StringArray outputs;
+    juce::Rectangle<int> meterArea;
+    float outLevel = 0.0f, micLevelShown = 0.0f;
+    int ticks = 0;
+};
+#endif
+
+juce::String EmberAmpEditor::streamStatusText() const
+{
+   #if JucePlugin_Build_Standalone
+    if (stream == nullptr) return {};
+    if (stream->isRunning())
+        return "Live: sending to " + stream->getOutputName() + (stream->hasMic() ? " (amp + mic)" : " (amp)");
+    if (streamError.isNotEmpty()) return streamError;
+    if (StreamOutput::findVirtualCable().isEmpty())
+       #if JUCE_MAC
+        return "No virtual cable yet. Install BlackHole 2ch (free), then reopen this panel.";
+       #else
+        return "No virtual cable yet. Install VB-Audio Virtual Cable (free), then reopen this panel.";
+       #endif
+    return "Off. Turn on STREAM to start.";
+   #else
+    return {};
+   #endif
+}
+
+void EmberAmpEditor::startStream (bool showProblems)
+{
+   #if JucePlugin_Build_Standalone
+    auto* holder = juce::StandalonePluginHolder::getInstance();
+    if (stream == nullptr || holder == nullptr) return;
+    auto* settings = holder->settings.get();
+
+    StreamOutput::Settings s;
+    s.outputDevice = settings != nullptr ? settings->getValue ("emberStreamDevice") : juce::String();
+    const auto outputs = StreamOutput::listDevices (false);
+    if (s.outputDevice.isEmpty() || ! outputs.contains (s.outputDevice))
+        s.outputDevice = StreamOutput::findVirtualCable();
+
+    const auto mainSetup = holder->deviceManager.getAudioDeviceSetup();
+    if (auto* dev = holder->deviceManager.getCurrentAudioDevice())
+        s.sampleRate = dev->getCurrentSampleRate();
+    s.micChannel = settings != nullptr ? settings->getIntValue ("emberStreamMicCh", -1) : -1;
+    s.micDevice = s.micChannel >= 0 ? mainSetup.inputDeviceName : juce::String();
+
+    if (s.outputDevice.isEmpty())
+        streamError = StreamOutput::listDevices (false).isEmpty() ? "No audio outputs found." : juce::String();
+    else if (s.outputDevice == mainSetup.outputDeviceName)
+        streamError = "Pick a virtual cable, not the device you listen on.";
+    else
+        streamError = stream->start (s);
+
+    if (! stream->isRunning() && showProblems)
+        showStreamPanel();
+   #else
+    juce::ignoreUnused (showProblems);
+   #endif
+}
+
+void EmberAmpEditor::stopStream()
+{
+    if (stream != nullptr) stream->stop();
+    streamError.clear();
+}
+
+void EmberAmpEditor::saveStreamSettings()
+{
+   #if JucePlugin_Build_Standalone
+    if (auto* holder = juce::StandalonePluginHolder::getInstance())
+        if (auto* settings = holder->settings.get(); settings != nullptr && stream != nullptr)
+        {
+            settings->setValue ("emberStreamOn", streamWanted);
+            settings->setValue ("emberStreamGuitarDb", juce::Decibels::gainToDecibels (stream->guitarGain.load()));
+            settings->setValue ("emberStreamMicDb", juce::Decibels::gainToDecibels (stream->micGain.load()));
+        }
+   #endif
+}
+
+void EmberAmpEditor::showStreamPanel()
+{
+   #if JucePlugin_Build_Standalone
+    if (stream == nullptr) return;
+    juce::CallOutBox::launchAsynchronously (std::make_unique<StreamPanel> (*this), streamMoreButton.getBounds(), this);
+   #endif
 }

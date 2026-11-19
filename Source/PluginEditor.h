@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 
 class EmberAmpEditor;
+class StreamOutput;
 
 //==============================================================================
 class EmberLookAndFeel : public juce::LookAndFeel_V4
@@ -208,6 +209,19 @@ private:
     juce::ComboBox bufferBox, inputChannelBox;
     juce::Label latencyLabel;
     juce::String lastDeviceKey;
+
+    // Standalone-only: "Stream" sends a second copy (plus an optional mic) to a virtual cable for Discord
+    friend class StreamPanel;
+    std::unique_ptr<StreamOutput> stream;
+    juce::ToggleButton streamSwitch { "STREAM" };
+    juce::TextButton streamMoreButton;
+    bool streamWanted = false;
+    juce::String streamError;
+    juce::String streamStatusText() const;
+    void startStream (bool showProblems);
+    void stopStream();
+    void showStreamPanel();
+    void saveStreamSettings();
 
     // pages
     PedalsPage pedalsPage;

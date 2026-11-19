@@ -8,6 +8,12 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.1: Stream to Discord
+Play through Discord, OBS or Zoom without screen sharing. Turn on **STREAM** at the bottom of Ember Amp and it sends your amp sound (plus your mic, if you want) to a free virtual cable. Your own monitoring stays exactly as it was.
+1. Install the free cable: **BlackHole 2ch** (Mac, existential.audio/blackhole) or **VB-Audio Virtual Cable** (Windows, vb-audio.com/Cable).
+2. In Ember Amp, click **STREAM**, then **…** to choose a mic input and set the levels.
+3. In Discord, open **Voice & Video**, set Input Device to the cable, and turn **off** Noise Suppression, Echo Cancellation and Automatic Gain Control.
+
 ## What you get
 - **Ember Amp app**: plug your guitar into your audio interface and play
 - **VST3 plugin**: Ableton, Reaper, Cubase, FL Studio, Studio One…

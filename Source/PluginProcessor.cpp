@@ -1059,6 +1059,17 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
     outputPeak = juce::jmax (outPk, outputPeak.load());
+
+    // copy for the Stream output (dropped if the stream side has fallen behind)
+    if (streamTapOn.load (std::memory_order_relaxed) && numOut > 0)
+    {
+        const auto* L = buffer.getReadPointer (0);
+        const auto* R = buffer.getReadPointer (numOut > 1 ? 1 : 0);
+        const auto w = streamFifo.write (juce::jmin (n, streamFifo.getFreeSpace()));
+        if (w.blockSize1 > 0) { std::copy (L, L + w.blockSize1, streamBufL.data() + w.startIndex1); std::copy (R, R + w.blockSize1, streamBufR.data() + w.startIndex1); }
+        if (w.blockSize2 > 0) { std::copy (L + w.blockSize1, L + w.blockSize1 + w.blockSize2, streamBufL.data() + w.startIndex2);
+                                std::copy (R + w.blockSize1, R + w.blockSize1 + w.blockSize2, streamBufR.data() + w.startIndex2); }
+    }
 }
 
 void EmberAmpProcessor::copyRecentInput (float* dest, int numSamples) const
