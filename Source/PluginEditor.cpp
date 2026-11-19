@@ -1882,9 +1882,15 @@ void EmberAmpEditor::startStream (bool showProblems)
     s.micDevice = s.micChannel >= 0 ? mainSetup.inputDeviceName : juce::String();
 
     if (s.outputDevice.isEmpty())
+    {
+        stream->stop();
         streamError = StreamOutput::listDevices (false).isEmpty() ? "No audio outputs found." : juce::String();
+    }
     else if (s.outputDevice == mainSetup.outputDeviceName)
+    {
+        stream->stop();   // never send a second copy into your own speakers / headphones
         streamError = "Pick a virtual cable, not the device you listen on.";
+    }
     else
         streamError = stream->start (s);
 
