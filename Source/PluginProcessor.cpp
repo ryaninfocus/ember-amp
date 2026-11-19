@@ -426,6 +426,24 @@ EmberAmpProcessor::EmberAmpProcessor()
     // Give every amp a sensible starting sound (its first factory preset), then start on Clean.
     for (int a = numAmps - 1; a >= 0; --a)
         setCurrentProgram (a * presetsPerAmp);
+
+    for (auto* id : { "pitchOn", "pitch", "pitchMix" })
+        apvts.addParameterListener (id, this);
+}
+
+EmberAmpProcessor::~EmberAmpProcessor()
+{
+    for (auto* id : { "pitchOn", "pitch", "pitchMix" })
+        apvts.removeParameterListener (id, this);
+}
+
+void EmberAmpProcessor::parameterChanged (const juce::String& id, float value)
+{
+    // remember what YOU set; changes made by loading a preset, or while on a pitch preset, don't count
+    if (applyingPreset.load() || onPitchPreset.load()) return;
+    if (id == "pitchOn")       userPitchOn = value > 0.5f;
+    else if (id == "pitch")    userPitch = juce::roundToInt (value);
+    else if (id == "pitchMix") userPitchMix = value;
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLayout()
@@ -1111,7 +1129,17 @@ void EmberAmpProcessor::setCurrentProgram (int index)
     set ("gateOn", 1.0f);                 set ("gate", ampGateDb[f.amp]);
     set ("compOn", f.compOn ? 1.0f : 0.0f);   set ("sustain", f.sustain);
     set ("odOn", f.odOn ? 1.0f : 0.0f);       set ("boost", f.boost);
-    set ("pitchOn", f.pitchOn ? 1.0f : 0.0f); set ("pitch", (float) f.pitch);   set ("pitchMix", f.pitchMix);
+    applyingPreset = true;
+    if (f.pitchOn)   // a preset built on the pitch shifter brings its own setting
+    {
+        set ("pitchOn", 1.0f); set ("pitch", (float) f.pitch); set ("pitchMix", f.pitchMix);
+    }
+    else             // every other preset keeps Transpose the way you left it
+    {
+        set ("pitchOn", userPitchOn.load() ? 1.0f : 0.0f); set ("pitch", (float) userPitch.load()); set ("pitchMix", userPitchMix.load());
+    }
+    onPitchPreset = f.pitchOn;
+    applyingPreset = false;
     set ("delayOn", f.delayOn ? 1.0f : 0.0f); set ("delayTime", f.delayTime);   set ("delayFeedback", f.delayFeedback); set ("delayMix", f.delayMix);
     set ("reverbOn", f.revOn ? 1.0f : 0.0f);  set ("reverbSize", f.revSize);    set ("reverbMix", f.revMix);
     set ("chorusOn", f.chorusOn ? 1.0f : 0.0f);
@@ -1168,6 +1196,7 @@ bool EmberAmpProcessor::loadUserPreset (const juce::File& file)
         return false;
 
     const auto state = juce::ValueTree::fromXml (*xml);
+    onPitchPreset = false;
     for (auto* p : getParameters())
         if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
         {
@@ -1231,6 +1260,9 @@ void EmberAmpProcessor::getStateInformation (juce::MemoryBlock& destData)
     auto state = apvts.copyState();
     state.setProperty ("program", currentProgram, nullptr);
     state.setProperty ("presetsPerAmp", presetsPerAmp, nullptr);
+    state.setProperty ("userPitchOn", userPitchOn.load(), nullptr);
+    state.setProperty ("userPitch", userPitch.load(), nullptr);
+    state.setProperty ("userPitchMix", userPitchMix.load(), nullptr);
     state.setProperty ("userPreset", currentUserPreset, nullptr);
     for (int a = 0; a < numAmps; ++a)
         state.setProperty ("ir" + juce::String (a), irActive[(size_t) a].load() ? irFile[(size_t) a].getFullPathName() : juce::String(), nullptr);
@@ -1256,7 +1288,13 @@ void EmberAmpProcessor::setStateInformation (const void* data, int sizeInBytes)
                 prog = (prog / savedPer) * presetsPerAmp + prog % savedPer;
             currentProgram = juce::jlimit (0, getNumPrograms() - 1, prog);
             currentUserPreset = state.getProperty ("userPreset", {}).toString();
+            applyingPreset = true;
             apvts.replaceState (state);
+            applyingPreset = false;
+            userPitchOn  = (bool) state.getProperty ("userPitchOn", false);   // older saves: Transpose starts off
+            userPitch    = (int) state.getProperty ("userPitch", -2);
+            userPitchMix = (float) state.getProperty ("userPitchMix", 1.0f);
+            onPitchPreset = currentUserPreset.isEmpty() && factory[currentProgram].pitchOn;
             restoreIRsFrom (state);
         }
 }

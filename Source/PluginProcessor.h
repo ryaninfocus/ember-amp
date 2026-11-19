@@ -95,7 +95,8 @@ private:
 };
 
 //==============================================================================
-class EmberAmpProcessor : public juce::AudioProcessor
+class EmberAmpProcessor : public juce::AudioProcessor,
+                          private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     // The four amps. Each has its own knobs, its own built-in cab, its own IR slot and 4 presets.
@@ -108,7 +109,7 @@ public:
     static juce::String ampParamID (int amp, const char* knob)  { return "a" + juce::String (amp) + "_" + knob; }
 
     EmberAmpProcessor();
-    ~EmberAmpProcessor() override = default;
+    ~EmberAmpProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -185,6 +186,13 @@ private:
     void setAmpVoicing (int amp);
     float shape (float x, int amp) const noexcept;
     void restoreIRsFrom (const juce::ValueTree& state);
+
+    // Transpose follows YOU across presets: your last on/off, shift and mix are re-applied by every
+    // factory preset, except the ones built on the pitch shifter (Drop C Chug, Octave Doom, Harmony Fifth).
+    void parameterChanged (const juce::String& id, float value) override;
+    std::atomic<bool> userPitchOn { false }, applyingPreset { false }, onPitchPreset { false };
+    std::atomic<int> userPitch { -2 };
+    std::atomic<float> userPitchMix { 1.0f };
 
     std::atomic<float>* pInput;  std::atomic<float>* pMaster; std::atomic<float>* pMute; std::atomic<float>* pAmp;
     std::atomic<float>* pDynamics;
