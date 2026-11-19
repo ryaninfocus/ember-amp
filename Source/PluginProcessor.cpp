@@ -1039,7 +1039,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     // --- Output + safety soft limiter (transparent below -1 dBFS, can never exceed 0 dBFS) ---
     outGain.setTargetValue (dB (pMaster->load()));
-    constexpr float knee = 0.891f; // -1 dBFS
+    static constexpr float knee = 0.891f; // -1 dBFS
     auto safety = [] (float s) noexcept
     {
         const float a = std::abs (s);
