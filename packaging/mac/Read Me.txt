@@ -1,0 +1,19 @@
+EMBER AMP - Mac
+
+INSTALL
+1. Double-click "Install Ember Amp.pkg".
+2. If your Mac says it can't be opened because the developer can't be verified:
+   open System Settings > Privacy & Security, scroll down, and click "Open Anyway"
+   next to the Ember Amp message. Then open the installer again.
+   (This happens because Ember Amp isn't registered with Apple. It's a one-time step.)
+3. Follow the installer. It puts:
+     - Ember Amp (the app) in your Applications folder
+     - the AU plugin (Logic, GarageBand) and VST3 plugin (Ableton, Reaper, Cubase...)
+
+FIRST LAUNCH
+- Open Ember Amp from Applications (or search "Ember Amp" in Spotlight / Raycast).
+- Allow microphone access when asked - that's how the app hears your guitar.
+- Click "Options" (top left) > Audio Settings and pick your audio interface.
+- Pick which input your guitar is plugged into at the bottom of the window.
+
+Works on Apple Silicon and Intel Macs, macOS 11 or newer.

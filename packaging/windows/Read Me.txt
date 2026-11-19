@@ -1,0 +1,17 @@
+EMBER AMP - Windows
+
+INSTALL
+1. Run "Ember-Amp-...-Windows-Setup.exe".
+2. If Windows shows "Windows protected your PC": click "More info", then "Run anyway".
+   (This happens because Ember Amp isn't signed with a paid certificate. It's a one-time step.)
+3. Follow the installer. It puts:
+     - Ember Amp (the app) in Program Files, with a Start menu shortcut
+     - the VST3 plugin in C:\Program Files\Common Files\VST3 (Ableton, Reaper, Cubase, FL Studio...)
+
+FIRST LAUNCH
+- Open Ember Amp from the Start menu.
+- Click "Options" (top left) > Audio Settings and pick your audio interface.
+  For the lowest delay, choose "Windows Audio (Exclusive Mode)" as the device type.
+- Pick which input your guitar is plugged into at the bottom of the window.
+
+Needs 64-bit Windows 10 or 11.

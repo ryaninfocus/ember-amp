@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1f18"/>
+      <stop offset="1" stop-color="#0f0b09"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.6" r="0.45">
+      <stop offset="0" stop-color="#ff7a1a" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="arc" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a0a"/>
+      <stop offset="1" stop-color="#ffb14a"/>
+    </linearGradient>
+    <linearGradient id="flameOuter" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ff4d0a"/>
+      <stop offset="0.6" stop-color="#ff7a1a"/>
+      <stop offset="1" stop-color="#ffa53a"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff3d6"/>
+      <stop offset="1" stop-color="#ffc35a"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- tile -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="101" y="101" width="822" height="822" rx="184" fill="none" stroke="#4a3729" stroke-width="2"/>
+  <circle cx="512" cy="560" r="330" fill="url(#glow)"/>
+
+  <!-- knob ticks -->
+  <g stroke="#5d4838" stroke-width="10" stroke-linecap="round">
+    <line x1="254" y1="770" x2="240" y2="784"/>
+    <line x1="147" y1="512" x2="127" y2="512"/>
+    <line x1="254" y1="254" x2="240" y2="240"/>
+    <line x1="512" y1="147" x2="512" y2="127"/>
+    <line x1="770" y1="254" x2="784" y2="240"/>
+    <line x1="877" y1="512" x2="897" y2="512"/>
+    <line x1="770" y1="770" x2="784" y2="784"/>
+  </g>
+
+  <!-- knob track + value arc -->
+  <path d="M 278.7 745.3 A 330 330 0 1 1 745.3 745.3" fill="none" stroke="#3d2c21" stroke-width="34" stroke-linecap="round"/>
+  <path d="M 278.7 745.3 A 330 330 0 1 1 842 512" fill="none" stroke="url(#arc)" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="842" cy="512" r="30" fill="#ffd28a"/>
+
+  <!-- flame -->
+  <path d="M512 250 C 560 350, 660 420, 660 560 C 660 660, 595 730, 512 730 C 429 730, 364 660, 364 560 C 364 480, 410 430, 440 380 C 450 440, 470 470, 495 485 C 480 400, 490 320, 512 250 Z"
+        fill="#ff7a1a" opacity="0.55" filter="url(#soft)"/>
+  <path d="M512 250 C 560 350, 660 420, 660 560 C 660 660, 595 730, 512 730 C 429 730, 364 660, 364 560 C 364 480, 410 430, 440 380 C 450 440, 470 470, 495 485 C 480 400, 490 320, 512 250 Z"
+        fill="url(#flameOuter)"/>
+  <path d="M512 450 C 545 510, 590 550, 590 615 C 590 665, 555 700, 512 700 C 469 700, 434 665, 434 615 C 434 575, 460 545, 478 520 C 485 555, 498 570, 512 578 C 505 530, 500 490, 512 450 Z"
+        fill="url(#flameInner)"/>
+
+  <!-- sparks -->
+  <circle cx="620" cy="300" r="9" fill="#ffb14a"/>
+  <circle cx="400" cy="320" r="6" fill="#ff7a1a"/>
+  <circle cx="660" cy="380" r="5" fill="#ffd28a"/>
+</svg>

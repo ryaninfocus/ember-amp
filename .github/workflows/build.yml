@@ -1,0 +1,80 @@
+name: Build Ember Amp
+
+# Builds the Mac (Apple Silicon + Intel) and Windows installers.
+# Push a tag like v1.0.0 to publish them on the Releases page; any other push just builds and tests.
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        run: echo "VERSION=$(sed -n 's/^project(EmberAmp VERSION \([0-9.]*\)).*/\1/p' CMakeLists.txt)" >> "$GITHUB_ENV"
+      - name: Build (universal)
+        run: |
+          cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          cmake --build build --config Release --parallel 4 -- -quiet
+      - name: Check the plugin and both architectures
+        run: |
+          lipo -archs "build/EmberAmp_artefacts/Release/Standalone/Ember Amp.app/Contents/MacOS/Ember Amp"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/EmberAmp_artefacts/Release/AU/Ember Amp.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aufx EmAp Embr | tail -2
+      - name: Make installer
+        run: packaging/mac/make_installer.sh build/EmberAmp_artefacts/Release "$VERSION" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: dist/*.dmg
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        shell: bash
+        run: echo "VERSION=$(sed -n 's/^project(EmberAmp VERSION \([0-9.]*\)).*/\1/p' CMakeLists.txt)" >> "$GITHUB_ENV"
+      - name: Build
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release --parallel 4
+      - name: Make installer
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          $art = Resolve-Path "build\EmberAmp_artefacts\Release"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $out = Resolve-Path dist
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /Q "/DVersion=$env:VERSION" "/DArt=$art" "/DOut=$out" packaging\windows\EmberAmp.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path "$art\Standalone\Ember Amp.exe", "$art\VST3\Ember Amp.vst3", "packaging\windows\Read Me.txt" -DestinationPath "dist\Ember-Amp-$env:VERSION-Windows-Portable.zip"
+          Get-ChildItem dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ mac, windows ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Ember Amp ${GITHUB_REF_NAME#v}" --notes-file packaging/RELEASE_NOTES.md
