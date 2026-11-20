@@ -105,7 +105,11 @@ public:
 
     static juce::String ampName (int amp);
     static juce::String ampTagline (int amp);
-    static juce::String cabName (int amp);
+    static juce::String cabName (int amp);              // the amp's own (default) cab
+    static constexpr int numCabs = 6, numMics = 4;
+    static juce::StringArray cabNames();                // every cab, selectable on every amp
+    static juce::StringArray micNames();
+    static int defaultCab (int amp);
     static juce::String ampParamID (int amp, const char* knob)  { return "a" + juce::String (amp) + "_" + knob; }
 
     EmberAmpProcessor();
@@ -180,7 +184,8 @@ private:
     struct AmpKnobs { std::atomic<float>* gain; std::atomic<float>* bass; std::atomic<float>* mid;
                       std::atomic<float>* treble; std::atomic<float>* presence; std::atomic<float>* volume;
                       std::atomic<float>* cab; std::atomic<float>* sustain;
-                      std::atomic<float>* drive; };   // drive: Crunch, Distortion, Solo (nullptr on Clean)
+                      std::atomic<float>* drive;     // drive: Crunch, Distortion, Solo (nullptr on Clean)
+                      std::atomic<float>* cabModel; std::atomic<float>* mic; std::atomic<float>* micPos; std::atomic<float>* micDist; };
 
     void updateFilters (int amp);
     void setAmpVoicing (int amp);
@@ -234,6 +239,12 @@ private:
     Biquad bass, mid, treble, presence;           // tone stack
     Biquad cabHp, cabLowRes, cabScoop, cabComb, cabBite, cabLp1, cabLp2; // per-amp built-in cab
     Biquad depth;                                 // post-cab low resonance
+    Biquad micA, micB, micPosShelf, micDistLow, micDistHigh;   // the mic: its type, where it points, how far back
+    std::vector<float> reflBuf = std::vector<float> (2048, 0.0f);   // far mic: a short reflection off the floor/room
+    int reflPos = 0;
+    float reflGain = 0.0f, reflDelay = 0.0f;
+    float lastCabModel = -1.0f, lastMic = -1.0f, lastMicPos = -1.0f, lastMicDist = -1.0f;
+    void updateCabMic (int amp, bool force);
 
     std::array<juce::dsp::Convolution, numAmps> irConvolution;
     std::array<juce::File, numAmps> irFile;

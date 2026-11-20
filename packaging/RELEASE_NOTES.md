@@ -8,6 +8,11 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.3
+- **Cabs and mics:** every amp can use any of 6 cabinets and 4 microphones, with mic **Position** (centre of the speaker to the edge) and **Distance** (close to 30 cm). Each of the 20 presets has its own setup, and volumes are re-matched.
+- **New look:** sculpted amps with a glowing core and engraved circuit lines, on a night-sky background.
+- **Fixed:** random crashes when opening the app (an audio-driver bug in the JUCE library when input and output are different devices, and a rare Delay overrun).
+
 ## New in 1.2
 - New look: realistic black-tolex amps with brushed metal control plates, machined knobs and a cleaner pedalboard.
 - Crunch and Solo now have a **Drive** knob too: 20% on every Crunch preset, 55% on every Solo preset (like Distortion), with volumes rebalanced.

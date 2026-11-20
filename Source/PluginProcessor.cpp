@@ -46,9 +46,14 @@ namespace
         float lp1Hz, lp1Q, lp2Hz, lp2Q;
     };
 
+    // every cab can go on every amp (EmberAmpProcessor::cabNames() is in this order)
     constexpr CabVoicing cabs[] = {
+        // open-back 1x12: small and airy, light lows, bright and quick
+        { 90.0f, 0.70f,  135.0f, 0.9f, 1.0f,  450.0f, 0.9f, -1.0f,  1800.0f, 1.2f, -1.0f,  3500.0f, 1.0f, 3.5f,  7000.0f, 0.8f, 9000.0f, 0.7f },
         // open-back 2x12: less thump, wide and sparkly
         { 60.0f, 0.70f,  110.0f, 0.9f, 2.0f,  400.0f, 0.9f, -1.5f,  1600.0f, 1.2f, -1.5f,  3200.0f, 1.0f, 3.0f,  6500.0f, 0.8f, 8500.0f, 0.7f },
+        // closed-back 2x12: tighter and punchier than the open 2x12, still compact
+        { 70.0f, 0.80f,  115.0f, 1.0f, 3.5f,  450.0f, 0.9f, -2.0f,  1500.0f, 1.3f, -1.5f,  2800.0f, 1.1f, 3.5f,  5800.0f, 0.85f, 7500.0f, 0.7f },
         // closed-back 4x12 with vintage 25 W speakers: thump, slight low-mid dip, forward bark
         { 72.0f, 0.85f,  105.0f, 1.1f, 5.0f,  520.0f, 0.9f, -2.5f,  1300.0f, 1.4f, -2.5f,  2500.0f, 1.3f, 4.5f,  5000.0f, 0.9f, 6800.0f, 0.7f },
         // closed-back 4x12 with modern 60 W speakers: deep, scooped, aggressive upper mids
@@ -78,30 +83,56 @@ namespace
         // ---- Clean
         // a plain, open clean: flat EQ, light sustain, a touch of room, nothing on top
         { "Normal Clean",       0, 0.25f, 5.0f, 5.0f, 6.5f, 6.5f,   0.0f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.00f },
-        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   0.0f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
-        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   0.0f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
-        { "Warm Jazz",          0, 0.426f, 6.5f, 5.0f, 4.5f, 3.5f,   0.0f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f },
-        { "Chorus Clean",       0, 0.22f, 5.0f, 5.0f, 6.5f, 6.5f,   0.0f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f,  true, 0.70f, 0.55f, 0.50f },
+        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   1.9f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
+        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   2.7f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
+        { "Warm Jazz",          0, 0.426f, 6.5f, 5.0f, 4.5f, 3.5f,   -2.2f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f },
+        { "Chorus Clean",       0, 0.22f, 5.0f, 5.0f, 6.5f, 6.5f,   0.2f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f,  true, 0.70f, 0.55f, 0.50f },
         // ---- Crunch
         { "Classic Crunch",     1, 0.70f, 6.0f, 6.0f, 6.0f, 6.0f,   3.2f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f },
-        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   7.6f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
-        { "British Roar",       1, 0.90f, 5.5f, 7.0f, 6.5f, 6.5f,   0.7f, false, 0.20f,  true, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.10f, 1.00f, 0.20f },
-        { "Edge of Breakup",    1, 0.76f, 5.5f, 5.5f, 6.0f, 5.5f,   3.2f,  false, 0.25f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.40f, 0.18f, 1.00f, 0.20f },
-        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  -0.5f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
+        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   7.8f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
+        { "British Roar",       1, 0.90f, 5.5f, 7.0f, 6.5f, 6.5f,   -0.4f, false, 0.20f,  true, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.10f, 1.00f, 0.20f },
+        { "Edge of Breakup",    1, 0.76f, 5.5f, 5.5f, 6.0f, 5.5f,   5.5f,  false, 0.25f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.40f, 0.18f, 1.00f, 0.20f },
+        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  -0.8f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
         // ---- Distortion
         { "Prog Metal Rhythm",  2, 0.72f, 4.5f, 6.0f, 6.0f, 6.5f,  -0.2f, false, 0.20f,  false, 0.55f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.55f },
-        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  -0.2f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
-        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  -0.1f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
-        { "Octave Doom",        2, 0.72f, 4.0f, 5.5f, 5.5f, 5.5f,   0.4f, false, 0.20f,  false, 0.55f,  true, -12, 0.40f, false, 300.0f, 0.15f, 0.20f,  true, 0.50f, 0.15f, 1.00f, 0.55f },
-        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   1.5f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
+        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  0.1f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
+        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  -1.0f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
+        { "Octave Doom",        2, 0.72f, 4.0f, 5.5f, 5.5f, 5.5f,   -1.2f, false, 0.20f,  false, 0.55f,  true, -12, 0.40f, false, 300.0f, 0.15f, 0.20f,  true, 0.50f, 0.15f, 1.00f, 0.55f },
+        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   0.8f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
         // ---- Solo
         { "Singing Lead",       3, 0.72f, 5.0f, 7.0f, 6.0f, 6.0f,  -2.8f,  false, 0.50f,  true, 0.45f, false,  -2, 1.00f,  true, 450.0f, 0.35f, 0.22f,  true, 0.55f, 0.20f, 1.00f, 0.55f },
-        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  -2.4f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
-        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  -2.8f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
-        { "Harmony Fifth",      3, 0.75f, 5.0f, 7.0f, 6.0f, 6.0f,  -1.7f,  false, 0.35f,  true, 0.50f,  true,   7, 0.45f,  true, 420.0f, 0.30f, 0.20f,  true, 0.50f, 0.20f, 1.00f, 0.55f },
-        { "Texas Scoop Lead",   3, 0.95f, 6.5f, 3.0f, 7.0f, 7.5f,  -1.6f,  false, 0.35f,  true, 0.60f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.18f,  true, 0.40f, 0.15f, 1.00f, 0.55f },
+        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  -1.7f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
+        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  -3.3f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
+        { "Harmony Fifth",      3, 0.75f, 5.0f, 7.0f, 6.0f, 6.0f,  -2.1f,  false, 0.35f,  true, 0.50f,  true,   7, 0.45f,  true, 420.0f, 0.30f, 0.20f,  true, 0.50f, 0.20f, 1.00f, 0.55f },
+        { "Texas Scoop Lead",   3, 0.95f, 6.5f, 3.0f, 7.0f, 7.5f,  -3.3f,  false, 0.35f,  true, 0.60f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.18f,  true, 0.40f, 0.15f, 1.00f, 0.55f },
     };
     static_assert (std::size (factory) == EmberAmpProcessor::numAmps * EmberAmpProcessor::presetsPerAmp);
+
+    // Every preset has its own cab and mic setup (cab model, mic type, position 0 = cap .. 1 = edge, distance 0..1 = 0..30 cm)
+    struct CabSetup { int cab, mic; float pos, dist; };
+    constexpr CabSetup presetCab[] = {
+        { 1, 0, 0.35f, 0.15f },   // Normal Clean: 2x12 Open, Dynamic, 35% out, 4 cm
+        { 0, 2, 0.20f, 0.30f },   // Glass Clean: 1x12 Open, Condenser, 20% out, 9 cm
+        { 1, 2, 0.55f, 0.70f },   // Ambient Swell: 2x12 Open, Condenser, 55% out, 21 cm
+        { 2, 1, 0.60f, 0.25f },   // Warm Jazz: 2x12 Closed, Ribbon, 60% out, 8 cm
+        { 0, 3, 0.40f, 0.20f },   // Chorus Clean: 1x12 Open, Large Dyn, 40% out, 6 cm
+        { 3, 0, 0.35f, 0.15f },   // Classic Crunch: 4x12 V25, Dynamic, 35% out, 4 cm
+        { 2, 1, 0.45f, 0.35f },   // Blues Breaker: 2x12 Closed, Ribbon, 45% out, 10 cm
+        { 3, 3, 0.25f, 0.10f },   // British Roar: 4x12 V25, Large Dyn, 25% out, 3 cm
+        { 1, 0, 0.55f, 0.30f },   // Edge of Breakup: 2x12 Open, Dynamic, 55% out, 9 cm
+        { 3, 0, 0.20f, 0.05f },   // Rock Rhythm: 4x12 V25, Dynamic, 20% out, 2 cm
+        { 4, 0, 0.35f, 0.15f },   // Prog Metal Rhythm: 4x12 M60, Dynamic, 35% out, 4 cm
+        { 4, 2, 0.15f, 0.05f },   // Djent Tight: 4x12 M60, Condenser, 15% out, 2 cm
+        { 4, 3, 0.30f, 0.10f },   // Drop C Chug: 4x12 M60, Large Dyn, 30% out, 3 cm
+        { 3, 1, 0.50f, 0.20f },   // Octave Doom: 4x12 V25, Ribbon, 50% out, 6 cm
+        { 4, 0, 0.10f, 0.00f },   // Texas Special: 4x12 M60, Dynamic, 10% out, 0 cm
+        { 5, 0, 0.35f, 0.15f },   // Singing Lead: 4x12 Smooth, Dynamic, 35% out, 4 cm
+        { 5, 2, 0.25f, 0.20f },   // Shred: 4x12 Smooth, Condenser, 25% out, 6 cm
+        { 5, 1, 0.45f, 0.25f },   // Liquid Legato: 4x12 Smooth, Ribbon, 45% out, 8 cm
+        { 2, 3, 0.35f, 0.30f },   // Harmony Fifth: 2x12 Closed, Large Dyn, 35% out, 9 cm
+        { 4, 3, 0.20f, 0.15f },   // Texas Scoop Lead: 4x12 M60, Large Dyn, 20% out, 4 cm
+    };
+    static_assert (std::size (presetCab) == std::size (factory));
 
     // Standard gate threshold per amp: more gain = more noise = harder gate.
     constexpr float standardGateDb = -81.0f;
@@ -121,10 +152,25 @@ juce::String EmberAmpProcessor::ampTagline (int amp)
     return t[juce::jlimit (0, numAmps - 1, amp)];
 }
 
+juce::StringArray EmberAmpProcessor::cabNames()
+{
+    return { "1x12 Open-Back", "2x12 Open-Back", "2x12 Closed-Back", "4x12 Vintage 25W", "4x12 Modern 60W", "4x12 Smooth Lead" };
+}
+
+juce::StringArray EmberAmpProcessor::micNames()
+{
+    return { "Dynamic", "Ribbon", "Condenser", "Large Dynamic" };
+}
+
+int EmberAmpProcessor::defaultCab (int amp)
+{
+    static const int c[] = { 1, 3, 4, 5 };   // each amp's original cab
+    return c[juce::jlimit (0, numAmps - 1, amp)];
+}
+
 juce::String EmberAmpProcessor::cabName (int amp)
 {
-    static const char* c[] = { "2x12 Open-Back", "4x12 Vintage 25W", "4x12 Modern 60W", "4x12 Smooth Lead" };
-    return c[juce::jlimit (0, numAmps - 1, amp)];
+    return cabNames()[defaultCab (amp)];
 }
 
 //==============================================================================
@@ -364,9 +410,12 @@ void PingPongDelay::process (juce::AudioBuffer<float>& buffer, int numSamples, f
     {
         float readPos = (float) writePos - delaySamples.getNextValue();
         if (readPos < 0.0f) readPos += (float) size;
-        const int i0 = (int) readPos;
+        int i0 = (int) readPos;
+        const float frac = juce::jlimit (0.0f, 1.0f, readPos - (float) i0);
+        // a tiny negative position can round up to exactly `size` once wrapped: keep the index inside the line
+        if (i0 >= size) i0 -= size;
+        if (i0 < 0)     i0 += size;
         const int i1 = (i0 + 1) % size;
-        const float frac = readPos - (float) i0;
 
         const float dl = lines[0][(size_t) i0] + frac * (lines[0][(size_t) i1] - lines[0][(size_t) i0]);
         const float dr = lines[1][(size_t) i0] + frac * (lines[1][(size_t) i1] - lines[1][(size_t) i0]);
@@ -419,7 +468,8 @@ EmberAmpProcessor::EmberAmpProcessor()
         knobs[a] = { raw (ampParamID (a, "gain")), raw (ampParamID (a, "bass")), raw (ampParamID (a, "mid")),
                      raw (ampParamID (a, "treble")), raw (ampParamID (a, "presence")), raw (ampParamID (a, "volume")),
                      raw (ampParamID (a, "cab")), raw (ampParamID (a, "sustain")),
-                     a != clean ? raw (ampParamID (a, "drive")) : nullptr };
+                     a != clean ? raw (ampParamID (a, "drive")) : nullptr,
+                     raw (ampParamID (a, "cabModel")), raw (ampParamID (a, "mic")), raw (ampParamID (a, "micPos")), raw (ampParamID (a, "micDist")) };
 
     for (auto& f : irActive) f = false;
 
@@ -477,6 +527,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "volume"), 1 }, n + "Volume", NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f, dBA));
         p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { ampParamID (a, "cab"), 1 }, n + "Cab", true));
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "sustain"), 1 }, n + "Sustain", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f, pct));
+        // cab and mic: any cab on any amp; the defaults reproduce each amp's original cab exactly
+        p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { ampParamID (a, "cabModel"), 1 }, n + "Cab Model", cabNames(), defaultCab (a)));
+        p.push_back (std::make_unique<AudioParameterChoice> (ParameterID { ampParamID (a, "mic"), 1 }, n + "Mic", micNames(), 0));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "micPos"), 1 }, n + "Mic Position", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.35f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                         { return v < 0.12f ? String ("Cap") : v > 0.88f ? String ("Edge") : String (roundToInt (v * 100.0f)) + "%"; })));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "micDist"), 1 }, n + "Mic Distance", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.15f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return String (roundToInt (v * 30.0f)) + " cm"; })
+                                                        .withValueFromStringFunction ([] (const String& t) { return t.retainCharacters ("0123456789.").getFloatValue() / 30.0f; })));
         if (a != clean)   // Distortion has always had Drive; Crunch and Solo got it in 1.2 (starts at 0 = as before)
             p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "drive"), 1 }, n + "Drive", NormalisableRange<float> (0.0f, 1.0f, 0.001f),
                                                                 a == distortion ? 0.5f : 0.0f, pct));
@@ -632,8 +691,11 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     outGain.setCurrentAndTargetValue (dB (pMaster->load()));
 
     for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
-                     &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth })
+                     &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
+                     &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh })
         b->reset();
+    std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
+    reflPos = 0;
 
     activeAmp = getSelectedAmp();
     setAmpVoicing (activeAmp);
@@ -683,17 +745,70 @@ void EmberAmpProcessor::setAmpVoicing (int amp)
     fizz.set        (Coeffs::makeLowPass    (sr, v.fizzHz > 0.0f ? juce::jmin (v.fizzHz, 0.45f * sr) : 0.45f * sr, 0.707f));
     depth.set       (Coeffs::makePeakFilter (sr, 90.0f, 1.4f, dB (v.depthDb)));
 
-    const auto& c = cabs[amp];
-    cabHp.set     (Coeffs::makeHighPass   (sr, c.hpHz, c.hpQ));
-    cabLowRes.set (Coeffs::makePeakFilter (sr, c.resHz, c.resQ, dB (c.resDb)));
-    cabScoop.set  (Coeffs::makePeakFilter (sr, c.scoopHz, c.scoopQ, dB (c.scoopDb)));
-    cabComb.set   (Coeffs::makePeakFilter (sr, c.combHz, c.combQ, dB (c.combDb)));
-    cabBite.set   (Coeffs::makePeakFilter (sr, c.biteHz, c.biteQ, dB (c.biteDb)));
-    cabLp1.set    (Coeffs::makeLowPass    (sr, c.lp1Hz, c.lp1Q));
-    cabLp2.set    (Coeffs::makeLowPass    (sr, c.lp2Hz, c.lp2Q));
+    updateCabMic (amp, true);
 
     lastBass = lastMid = lastTreble = lastPresence = -1.0f;   // force the tone stack to refresh
     updateFilters (amp);
+    updateCabMic (amp, false);
+}
+
+// The cab model, the mic type, where the mic points (centre of the cone = bright, edge = dark)
+// and how far back it is (close = proximity bass, far = less bass, softer top, a little room)
+void EmberAmpProcessor::updateCabMic (int amp, bool force)
+{
+    const auto sr = getSampleRate() > 0 ? (float) getSampleRate() : 44100.0f;
+    const auto& k = knobs[amp];
+    const float cabV = k.cabModel->load(), micV = k.mic->load(), posV = k.micPos->load(), distV = k.micDist->load();
+
+    if (force || cabV != lastCabModel)
+    {
+        lastCabModel = cabV;
+        const auto& c = cabs[juce::jlimit (0, numCabs - 1, juce::roundToInt (cabV))];
+        cabHp.set     (Coeffs::makeHighPass   (sr, c.hpHz, c.hpQ));
+        cabLowRes.set (Coeffs::makePeakFilter (sr, c.resHz, c.resQ, dB (c.resDb)));
+        cabScoop.set  (Coeffs::makePeakFilter (sr, c.scoopHz, c.scoopQ, dB (c.scoopDb)));
+        cabComb.set   (Coeffs::makePeakFilter (sr, c.combHz, c.combQ, dB (c.combDb)));
+        cabBite.set   (Coeffs::makePeakFilter (sr, c.biteHz, c.biteQ, dB (c.biteDb)));
+        cabLp1.set    (Coeffs::makeLowPass    (sr, juce::jmin (c.lp1Hz, 0.45f * sr), c.lp1Q));
+        cabLp2.set    (Coeffs::makeLowPass    (sr, juce::jmin (c.lp2Hz, 0.45f * sr), c.lp2Q));
+    }
+    if (force || micV != lastMic)
+    {
+        lastMic = micV;
+        switch (juce::roundToInt (micV))
+        {
+            case 1:  // ribbon: warm and smooth, rolled-off top
+                micA.set (Coeffs::makeLowShelf  (sr, 150.0f, 0.7f, dB (2.0f)));
+                micB.set (Coeffs::makeHighShelf (sr, 3500.0f, 0.6f, dB (-5.0f)));
+                break;
+            case 2:  // condenser: open, detailed top, a touch less low-mid
+                micA.set (Coeffs::makeHighShelf  (sr, 6000.0f, 0.7f, dB (3.0f)));
+                micB.set (Coeffs::makePeakFilter (sr, 220.0f, 0.8f, dB (-1.5f)));
+                break;
+            case 3:  // large dynamic: thicker low-mids, slightly softer fizz
+                micA.set (Coeffs::makePeakFilter (sr, 250.0f, 0.9f, dB (2.0f)));
+                micB.set (Coeffs::makeHighShelf  (sr, 7000.0f, 0.7f, dB (-2.0f)));
+                break;
+            default: // dynamic: the reference the built-in cabs were voiced with
+                micA.set (Coeffs::makePeakFilter (sr, 1000.0f, 0.7f, 1.0f));
+                micB.set (Coeffs::makePeakFilter (sr, 1000.0f, 0.7f, 1.0f));
+                break;
+        }
+    }
+    if (force || posV != lastMicPos)
+    {
+        lastMicPos = posV;
+        micPosShelf.set (Coeffs::makeHighShelf (sr, 3200.0f, 0.6f, dB ((0.35f - posV) * 9.0f)));   // neutral at 35%
+    }
+    if (force || distV != lastMicDist)
+    {
+        lastMicDist = distV;
+        const float far = juce::jmax (0.0f, distV - 0.15f) / 0.85f;                                  // neutral at 15% (4.5 cm)
+        micDistLow.set  (Coeffs::makeLowShelf  (sr, 140.0f, 0.7f, dB ((0.15f - distV) * 7.0f)));
+        micDistHigh.set (Coeffs::makeHighShelf (sr, 7000.0f, 0.7f, dB (-5.0f * far)));
+        reflGain  = 0.35f * far;
+        reflDelay = juce::jmin ((float) reflBuf.size() - 2.0f, (0.0006f + 0.0024f * distV) * sr);
+    }
 }
 
 void EmberAmpProcessor::updateFilters (int amp)
@@ -762,8 +877,10 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         {
             activeAmp = want;
             for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
-                             &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth })
+                             &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
+                             &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh })
                 b->reset();
+            std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
             setAmpVoicing (activeAmp);
             const auto& v = voicings[activeAmp];
             driveGain.setCurrentAndTargetValue (dB (juce::jmap (knobs[activeAmp].gain->load(), v.gainMinDb, v.gainMaxDb)));
@@ -896,6 +1013,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
 
     updateFilters (amp);
+    updateCabMic (amp, false);
     if (v.splitMix > 0.0f)
     {
         if ((int) splitBuf.size() < n) splitBuf.resize ((size_t) n);
@@ -1012,8 +1130,20 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         if (irActive[(size_t) amp].load())
             irConvolution[(size_t) amp].process (juce::dsp::ProcessContextReplacing<float> (monoBlock));
         else
+        {
+            const int rbMask = (int) reflBuf.size() - 1;
+            const int rd = juce::jlimit (1, rbMask - 1, juce::roundToInt (reflDelay));
             for (int i = 0; i < n; ++i)
-                x[i] = cabLp2.process (cabLp1.process (cabBite.process (cabComb.process (cabScoop.process (cabLowRes.process (cabHp.process (x[i])))))));
+            {
+                float y = cabLp2.process (cabLp1.process (cabBite.process (cabComb.process (cabScoop.process (cabLowRes.process (cabHp.process (x[i])))))));
+                y = micDistHigh.process (micDistLow.process (micPosShelf.process (micB.process (micA.process (y)))));
+                reflBuf[(size_t) reflPos] = y;
+                if (reflGain > 0.0f)
+                    y += reflGain * reflBuf[(size_t) ((reflPos - rd) & rbMask)];
+                reflPos = (reflPos + 1) & rbMask;
+                x[i] = y;
+            }
+        }
     }
 
     // low-end resonance, amp volume, and the switching fade
@@ -1126,6 +1256,13 @@ void EmberAmpProcessor::setCurrentProgram (int index)
     set (ampParamID (f.amp, "mid"), f.mid);           set (ampParamID (f.amp, "treble"), f.treble);
     set (ampParamID (f.amp, "presence"), f.presence); set (ampParamID (f.amp, "volume"), f.volume);
     set (ampParamID (f.amp, "cab"), 1.0f);
+    {
+        const auto& cs = presetCab[index];
+        set (ampParamID (f.amp, "cabModel"), (float) cs.cab);
+        set (ampParamID (f.amp, "mic"), (float) cs.mic);
+        set (ampParamID (f.amp, "micPos"), cs.pos);
+        set (ampParamID (f.amp, "micDist"), cs.dist);
+    }
     set (ampParamID (f.amp, "sustain"), f.ampSustain);
     if (f.amp != clean) set (ampParamID (f.amp, "drive"), f.ampDrive);
 

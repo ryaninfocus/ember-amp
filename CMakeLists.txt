@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
-project(EmberAmp VERSION 1.2.1)
+project(EmberAmp VERSION 1.3.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,7 +16,7 @@ else()
     include(FetchContent)
     FetchContent_Declare(JUCE
         GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-        GIT_TAG        8.0.4
+        GIT_TAG        8.0.17-security   # 8.0.4 had a CoreAudio buffer overrun with split input/output devices
         GIT_SHALLOW    TRUE)
     FetchContent_MakeAvailable(JUCE)
 endif()

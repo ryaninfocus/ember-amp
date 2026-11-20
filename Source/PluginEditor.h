@@ -104,6 +104,15 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
     juce::Image logo;
 
+    // cab and mic: model menus, position / distance knobs, and a little speaker showing where the mic is
+    juce::ComboBox cabBox, micBox;
+    juce::Label cabTitle, micTitle;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> cabBoxAtt, micBoxAtt;
+    std::unique_ptr<Knob> posKnob, distKnob;
+    juce::Rectangle<int> speakerArea;
+    float shownPos = -1.0f, shownDist = -1.0f;
+    bool shownIR = false;
+
     juce::Rectangle<int> head, grille, panel, cabTop;
     bool shownActive = false, shownCab = true;
 };
@@ -230,6 +239,7 @@ private:
     int currentPage = 1, lastSelectedAmp = -1, lastProgramShown = -1;
     juce::String lastUserPresetShown;
     juce::Rectangle<int> stageArea, statusArea;
+    juce::Image starfield;   // background, rendered once per size
 
     bool dragHover = false;
     juce::Image logo;

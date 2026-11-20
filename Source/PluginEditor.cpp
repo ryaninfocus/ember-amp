@@ -295,54 +295,43 @@ void EmberLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
         return;
     }
 
-    if (style == "chrome" || style == "black")
+    if (style == "clay")
     {
+        // sculpted knob: a soft matte cylinder, a small pointer, a fine dotted scale
         const bool lightPanel = (bool) s.getProperties()["lightPanel"];
-        const float kr = radius * 0.74f;
+        const float kr = radius * 0.62f;
+        const auto ink = lightPanel ? Colour (0xff3a3d43) : Colour (0xffd9dbdf);
 
-        // fine scale printed on the panel
-        const auto tickCol = lightPanel ? Colour (0xff15161a).withAlpha (0.55f) : Colours::white.withAlpha (0.42f);
-        g.setColour (tickCol);
+        g.setColour (ink.withAlpha (0.55f));
         for (int i = 0; i <= 10; ++i)
         {
             const float a = startAngle + (float) i / 10.0f * (endAngle - startAngle);
-            const bool major = i % 5 == 0;
-            const float r1 = radius * 0.86f, r2 = radius * (major ? 0.99f : 0.93f);
-            g.drawLine (c.x + r1 * std::sin (a), c.y - r1 * std::cos (a), c.x + r2 * std::sin (a), c.y - r2 * std::cos (a), major ? 1.2f : 0.8f);
+            const float rr = radius * 0.90f;
+            const float d = i % 5 == 0 ? 2.2f : 1.4f;
+            g.fillEllipse (Rectangle<float> (d, d).withCentre ({ c.x + rr * std::sin (a), c.y - rr * std::cos (a) }));
         }
 
-        // contact shadow
-        g.setGradientFill (ColourGradient (Colours::black.withAlpha (lightPanel ? 0.45f : 0.7f), c.x, c.y + kr * 0.25f,
-                                           Colours::transparentBlack, c.x, c.y + kr * 1.35f, true));
-        g.fillEllipse (Rectangle<float> (kr * 2.5f, kr * 2.5f).withCentre (c.translated (0.0f, kr * 0.18f)));
+        // contact shadow, then the body (lit from above)
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (lightPanel ? 0.35f : 0.6f), c.x, c.y + kr * 0.5f,
+                                           Colours::transparentBlack, c.x, c.y + kr * 1.6f, true));
+        g.fillEllipse (Rectangle<float> (kr * 2.6f, kr * 2.4f).withCentre (c.translated (0.0f, kr * 0.35f)));
+        const auto hi = lightPanel ? Colour (0xfffdfdfe) : Colour (0xff55585e);
+        const auto lo = lightPanel ? Colour (0xffbfc2c7) : Colour (0xff17181b);
+        g.setGradientFill (ColourGradient (lo, c.x, c.y + kr, hi, c.x, c.y - kr, false));
+        g.fillEllipse (Rectangle<float> (kr * 2.0f, kr * 2.0f).withCentre (c.translated (0.0f, 2.0f)));   // side wall
+        g.setGradientFill (ColourGradient (hi, c.x - kr * 0.4f, c.y - kr, lo.interpolatedWith (hi, 0.45f), c.x + kr * 0.3f, c.y + kr, false));
+        g.fillEllipse (Rectangle<float> (kr * 1.86f, kr * 1.86f).withCentre (c));                            // top face
+        g.setColour (Colours::white.withAlpha (lightPanel ? 0.9f : 0.18f));
+        g.drawEllipse (Rectangle<float> (kr * 1.86f, kr * 1.86f).withCentre (c).reduced (0.6f), 0.8f);
+        g.setColour (Colours::black.withAlpha (lightPanel ? 0.18f : 0.6f));
+        g.drawEllipse (Rectangle<float> (kr * 2.0f, kr * 2.0f).withCentre (c.translated (0.0f, 2.0f)), 0.8f);
 
-        // skirt: matte black with a fine knurl
-        g.setGradientFill (ColourGradient (Colour (0xff2c2d31), c.x, c.y - kr, Colour (0xff060607), c.x, c.y + kr, false));
-        g.fillEllipse (c.x - kr, c.y - kr, kr * 2.0f, kr * 2.0f);
-        g.setColour (Colours::white.withAlpha (0.05f));
-        for (int i = 0; i < 64; ++i)
-        {
-            const float a = (float) i / 64.0f * MathConstants<float>::twoPi;
-            g.drawLine (c.x + kr * 0.80f * std::sin (a), c.y - kr * 0.80f * std::cos (a), c.x + kr * 0.98f * std::sin (a), c.y - kr * 0.98f * std::cos (a), 0.6f);
-        }
-        g.setColour (Colours::black.withAlpha (0.8f));
-        g.drawEllipse (c.x - kr, c.y - kr, kr * 2.0f, kr * 2.0f, 1.0f);
-
-        // machined metal cap with a conical sheen
-        const float cr = kr * 0.62f;
-        g.setGradientFill (ColourGradient (Colour (0xfff2f3f5), c.x - cr * 0.6f, c.y - cr * 0.8f, Colour (0xff7d8086), c.x + cr * 0.6f, c.y + cr, false));
-        g.fillEllipse (c.x - cr, c.y - cr, cr * 2.0f, cr * 2.0f);
-        g.setColour (Colours::white.withAlpha (0.25f));
-        for (int i = 1; i < 6; ++i)   // concentric machining rings
-            g.drawEllipse (Rectangle<float> (cr * 2.0f * (float) i / 6.0f, cr * 2.0f * (float) i / 6.0f).withCentre (c), 0.4f);
-        g.setColour (Colours::black.withAlpha (0.55f));
-        g.drawEllipse (c.x - cr, c.y - cr, cr * 2.0f, cr * 2.0f, 0.8f);
-
-        // white pointer line across the skirt
-        Path ptr; ptr.startNewSubPath (0.0f, -kr + 1.5f); ptr.lineTo (0.0f, -cr - 1.0f);
+        // pointer: a small dark wedge near the rim
+        Path ptr;
+        ptr.addTriangle (0.0f, -kr * 0.82f, -kr * 0.13f, -kr * 0.56f, kr * 0.13f, -kr * 0.56f);
         ptr.applyTransform (AffineTransform::rotation (angle).translated (c.x, c.y));
-        g.setColour (Colours::white.withAlpha (0.95f));
-        g.strokePath (ptr, PathStrokeType (2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour (lightPanel ? Colour (0xff1b1c20) : Colours::white.withAlpha (0.95f));
+        g.fillPath (ptr);
         return;
     }
 
@@ -542,7 +531,7 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state, const juce::String& param
 
     label.setText (title.toUpperCase(), juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
-    const bool panelStyle = style == "chrome" || style == "black";
+    const bool panelStyle = style == "chrome" || style == "black" || style == "clay";
     label.setFont (panelStyle ? spaced (titleSize - 1.0f, false, 0.35f) : spaced (titleSize, true, 0.10f));
     label.setColour (juce::Label::textColourId, panelStyle ? textColour.withAlpha (0.85f) : textColour);
     addAndMakeVisible (label);
@@ -636,24 +625,26 @@ void LevelMeter::paint (juce::Graphics& g)
 //==============================================================================
 AmpPage::Theme AmpPage::themeFor (int amp)
 {
+    // chassisTop/Bottom = the sculpted frame, grille = the face, grilleLine = engraved traces,
+    // panelTop/Bottom = the control strip, text = printed labels
     using juce::Colour;
     switch (amp)
     {
-        case 0:  return { Colour (0xff1b1c1f), Colour (0xff0d0d0f), Colour (0xff1e1f22), Colour (0xffc8c9cc),
-                          Colour (0xffd7d9dc), Colour (0xff9ea1a7), Colour (0xff17181b), true };    // Clean: brushed aluminium plate
-        case 1:  return { Colour (0xff1c1a18), Colour (0xff0d0c0b), Colour (0xff201d19), Colour (0xffc9ae76),
-                          Colour (0xffcfb47e), Colour (0xff8f7546), Colour (0xff1d1710), true };    // Crunch: brushed brass plate
-        case 2:  return { Colour (0xff1a1b1d), Colour (0xff0b0b0c), Colour (0xff141517), Colour (0xffa3322a),
-                          Colour (0xff1f2023), Colour (0xff111214), Colour (0xffe4e5e7), false };   // Distortion: black anodised plate
-        default: return { Colour (0xff1b1a1e), Colour (0xff0c0b0e), Colour (0xff17151b), Colour (0xff8a6fd0),
-                          Colour (0xff2e2738), Colour (0xff17131d), Colour (0xffebe5f5), false };   // Solo: smoked graphite plate
+        case 0:  return { Colour (0xfff4f5f7), Colour (0xffc9ccd1), Colour (0xffe3e5e8), Colour (0xff4d5158),
+                          Colour (0xffe8eaed), Colour (0xffd3d6da), Colour (0xff35383e), true };    // Clean: matte white
+        case 1:  return { Colour (0xfff1ebe0), Colour (0xffcbc1b0), Colour (0xffe2dacd), Colour (0xff5a4c38),
+                          Colour (0xffe8e1d5), Colour (0xffd2c8b8), Colour (0xff3f3528), true };    // Crunch: warm ivory
+        case 2:  return { Colour (0xff45484e), Colour (0xff1c1d20), Colour (0xff2a2c31), Colour (0xffa9aeb6),
+                          Colour (0xff303237), Colour (0xff222327), Colour (0xffdcdee2), false };   // Distortion: graphite
+        default: return { Colour (0xff423d4d), Colour (0xff1b1922), Colour (0xff292532), Colour (0xffb1a6c8),
+                          Colour (0xff2f2b38), Colour (0xff221f29), Colour (0xffe1dbec), false };   // Solo: slate violet
     }
 }
 
 AmpPage::AmpPage (EmberAmpEditor& o, EmberAmpProcessor& p, int a)
     : owner (o), proc (p), amp (a), accent (EmberAmpEditor::ampAccent (a)), theme (themeFor (a))
 {
-    const juce::String knobStyle = theme.lightPanel ? "chrome" : "black";
+    const juce::String knobStyle = "clay";
     std::vector<std::pair<const char*, const char*>> list;
     if (amp != EmberAmpProcessor::clean) list.push_back ({ "drive", "Drive" });
     for (auto kv : { std::pair<const char*, const char*> { "gain", "Gain" }, { "bass", "Bass" }, { "mid", "Middle" }, { "treble", "Treble" },
@@ -676,6 +667,28 @@ AmpPage::AmpPage (EmberAmpEditor& o, EmberAmpProcessor& p, int a)
     addAndMakeVisible (irLabel);
 
     logo = juce::ImageCache::getFromMemory (BinaryData::logo_png, BinaryData::logo_pngSize);
+
+    // cab + mic
+    for (auto* l : { &cabTitle, &micTitle })
+    {
+        l->setFont (spaced (10.0f, true, 0.25f));
+        l->setColour (juce::Label::textColourId, Palette::muted);
+        addAndMakeVisible (l);
+    }
+    cabTitle.setText ("CABINET", juce::dontSendNotification);
+    micTitle.setText ("MICROPHONE", juce::dontSendNotification);
+    cabBox.addItemList (EmberAmpProcessor::cabNames(), 1);
+    micBox.addItemList (EmberAmpProcessor::micNames(), 1);
+    cabBox.setTooltip ("Speaker cabinet");
+    micBox.setTooltip ("Microphone on the cabinet");
+    addAndMakeVisible (cabBox);
+    addAndMakeVisible (micBox);
+    cabBoxAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (p.apvts, EmberAmpProcessor::ampParamID (a, "cabModel"), cabBox);
+    micBoxAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (p.apvts, EmberAmpProcessor::ampParamID (a, "mic"), micBox);
+    posKnob  = std::make_unique<Knob> (p.apvts, EmberAmpProcessor::ampParamID (a, "micPos"),  "Position", accent, "pedal", Palette::text, 10.0f);
+    distKnob = std::make_unique<Knob> (p.apvts, EmberAmpProcessor::ampParamID (a, "micDist"), "Distance", accent, "pedal", Palette::text, 10.0f);
+    addAndMakeVisible (*posKnob);
+    addAndMakeVisible (*distKnob);
     refresh();
 }
 
@@ -699,9 +712,19 @@ void AmpPage::chooseIR()
 void AmpPage::refresh()
 {
     const bool ir = proc.hasIR (amp);
-    irLabel.setText (ir ? "IR  " + proc.getIRFile (amp).getFileNameWithoutExtension() : EmberAmpProcessor::cabName (amp).toUpperCase(),
+    irLabel.setText (ir ? "IR  " + proc.getIRFile (amp).getFileNameWithoutExtension() : juce::String ("NO IR LOADED"),
                      juce::dontSendNotification);
-    irLabel.setColour (juce::Label::textColourId, ir ? accent : Palette::text.withAlpha (0.7f));
+    // a loaded IR replaces the built-in cab and mic
+    for (juce::Component* c : { (juce::Component*) &cabBox, (juce::Component*) &micBox, (juce::Component*) posKnob.get(), (juce::Component*) distKnob.get() })
+        c->setEnabled (! ir);
+    const float pos  = proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, "micPos"))->load();
+    const float dist = proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, "micDist"))->load();
+    if (pos != shownPos || dist != shownDist || ir != shownIR)
+    {
+        shownPos = pos; shownDist = dist; shownIR = ir;
+        repaint (speakerArea.expanded (4));
+    }
+    irLabel.setColour (juce::Label::textColourId, ir ? accent : Palette::muted.withAlpha (0.7f));
     clearIRButton.setEnabled (ir);
 
     const bool active = proc.getSelectedAmp() == amp;
@@ -713,162 +736,263 @@ void AmpPage::paint (juce::Graphics& g)
 {
     using namespace juce;
     const auto h = head.toFloat();
-    const float corner = 7.0f;
+    const bool light = theme.lightPanel;
+    const float frameR = 30.0f;
 
-    // ---- contact shadow under the head
-    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.6f), h.getCentreX(), h.getBottom(),
-                                       Colours::transparentBlack, h.getCentreX(), h.getBottom() + 22.0f, false));
-    g.fillRect (h.withY (h.getBottom() - 2.0f).withHeight (24.0f).reduced (12.0f, 0.0f));
+    // ---- rubber feet + shadow on the cab
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.55f), h.getCentreX(), h.getBottom(),
+                                       Colours::transparentBlack, h.getCentreX(), h.getBottom() + 26.0f, false));
+    g.fillRect (h.withY (h.getBottom() - 6.0f).withHeight (32.0f).reduced (40.0f, 0.0f));
+    for (float fx : { h.getX() + 110.0f, h.getRight() - 190.0f })
+    {
+        auto foot = Rectangle<float> (fx, h.getBottom() - 8.0f, 80.0f, 30.0f);
+        g.setGradientFill (ColourGradient (Colour (0xff3b3d48), foot.getX(), foot.getY(), Colour (0xff15161b), foot.getX(), foot.getBottom(), false));
+        g.fillRoundedRectangle (foot, 6.0f);
+        g.setColour (Colours::white.withAlpha (0.12f));
+        g.drawHorizontalLine ((int) foot.getBottom() - 10, foot.getX() + 6.0f, foot.getRight() - 6.0f);
+    }
 
-    // ---- chassis: black tolex, a light rim along the top edge
-    Path shell; shell.addRoundedRectangle (h, corner);
+    // ---- sculpted frame: soft top light, darker underside, a crisp rim
+    Path frame; frame.addRoundedRectangle (h, frameR);
+    g.setColour (Colours::black.withAlpha (0.45f));
+    g.fillRoundedRectangle (h.translated (0.0f, 6.0f), frameR);
     g.setGradientFill (ColourGradient (theme.chassisTop, h.getX(), h.getY(), theme.chassisBottom, h.getX(), h.getBottom(), false));
-    g.fillPath (shell);
-    fillTextured (g, shell, tolexTexture());
-    g.setColour (Colours::white.withAlpha (0.10f));
-    g.drawHorizontalLine ((int) h.getY() + 1, h.getX() + corner, h.getRight() - corner);
-    g.setColour (Colours::black);
-    g.strokePath (shell, PathStrokeType (1.0f));
+    g.fillPath (frame);
+    g.setGradientFill (ColourGradient (Colours::white.withAlpha (light ? 0.7f : 0.16f), h.getCentreX(), h.getY(),
+                                       Colours::transparentBlack, h.getCentreX(), h.getY() + 30.0f, false));
+    g.strokePath (frame, PathStrokeType (2.0f));
 
-    // thin piping around the front
-    const auto pipe = h.reduced (11.0f);
-    g.setColour (theme.grilleLine.withAlpha (0.55f));
-    g.drawRoundedRectangle (pipe, 4.0f, 1.2f);
-    g.setColour (Colours::black.withAlpha (0.6f));
-    g.drawRoundedRectangle (pipe.translated (0.0f, 1.2f), 4.0f, 0.6f);
+    // ---- recessed face (the area inside the frame)
+    const auto face = grille.getUnion (panel).toFloat();
+    g.setColour (Colours::black.withAlpha (light ? 0.22f : 0.6f));
+    g.fillRoundedRectangle (face.expanded (2.0f), 6.0f);
+    g.setColour (theme.grille);
+    g.fillRect (face);
 
-    // ---- grille cloth
     const auto gr = grille.toFloat();
+    g.saveState();
+    g.reduceClipRegion (grille);
     {
-        Path cloth; cloth.addRoundedRectangle (gr, 3.0f);
-        g.setColour (theme.grille);
-        g.fillPath (cloth);
-        fillTextured (g, cloth, clothTexture(), 0.9f);
-        g.saveState();
-        g.reduceClipRegion (cloth);
-        // speaker cones barely showing through
-        for (int i = 0; i < 2; ++i)
+        // engraved circuit traces, mirrored left and right
+        const auto ec = gr.getCentre();
+        const float er = jmin (gr.getHeight() * 0.95f, gr.getWidth() * 0.22f);
+        const auto dark = theme.grilleLine.withAlpha (light ? 0.55f : 0.45f);
+        const auto lit  = light ? Colours::white.withAlpha (0.8f) : Colours::black.withAlpha (0.5f);
+        Random rng (17 + amp);
+        for (int side = 0; side < 2; ++side)
         {
-            const float cx = gr.getX() + gr.getWidth() * (0.27f + 0.46f * (float) i);
-            const float rr = gr.getHeight() * 0.62f;
-            g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.30f), cx, gr.getCentreY(), Colours::transparentBlack, cx + rr, gr.getCentreY(), true));
-            g.fillEllipse (Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre ({ cx, gr.getCentreY() }));
+            const float dir = side == 0 ? -1.0f : 1.0f;
+            const float startX = ec.x + dir * er * 0.80f;
+            const float edgeX  = side == 0 ? gr.getX() + 30.0f : gr.getRight() - 30.0f;
+            Random r2 (rng.nextInt());
+            for (int t = 0; t < 11; ++t)
+            {
+                const float y0 = gr.getY() + gr.getHeight() * (0.10f + 0.80f * (float) t / 10.0f) + (r2.nextFloat() - 0.5f) * 8.0f;
+                Path tr; tr.startNewSubPath (startX, y0);
+                float x = startX, y = y0;
+                const float run1 = (20.0f + r2.nextFloat() * 60.0f);
+                x += dir * run1; tr.lineTo (x, y);
+                const float jog = (r2.nextFloat() - 0.5f) * 70.0f;
+                x += dir * std::abs (jog); y += jog; y = jlimit (gr.getY() + 10.0f, gr.getBottom() - 10.0f, y);
+                tr.lineTo (x, y);
+                const float run2 = jmax (10.0f, std::abs (edgeX - x) * (0.3f + 0.7f * r2.nextFloat()));
+                x += dir * run2; tr.lineTo (x, y);
+                g.setColour (lit);
+                g.strokePath (tr, PathStrokeType (1.2f), AffineTransform::translation (0.0f, 1.0f));
+                g.setColour (dark);
+                g.strokePath (tr, PathStrokeType (1.2f));
+                g.setColour (dark.withMultipliedAlpha (1.4f));
+                g.fillEllipse (Rectangle<float> (5.5f, 5.5f).withCentre ({ x, y }));
+                if (r2.nextFloat() < 0.5f)
+                    g.fillEllipse (Rectangle<float> (3.5f, 3.5f).withCentre ({ x + dir * (14.0f + r2.nextFloat() * 30.0f), y + (r2.nextFloat() - 0.5f) * 30.0f }));
+            }
         }
-        // depth: darker toward the frame
-        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.45f), gr.getX(), gr.getY(), Colours::transparentBlack, gr.getX(), gr.getY() + 22.0f, false));
-        g.fillRect (gr.withHeight (22.0f));
-        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.35f), gr.getX(), gr.getBottom(), Colours::transparentBlack, gr.getX(), gr.getBottom() - 16.0f, false));
-        g.fillRect (gr.withTrimmedTop (gr.getHeight() - 16.0f));
-        g.restoreState();
-        g.setColour (Colours::black.withAlpha (0.8f));
-        g.strokePath (cloth, PathStrokeType (1.0f));
-    }
 
-    // ---- nameplate: a small metal badge on the cloth
-    {
-        auto plate = Rectangle<float> (232.0f, 50.0f).withCentre (gr.getCentre());
-        g.setColour (Colours::black.withAlpha (0.55f));
-        g.fillRoundedRectangle (plate.translated (0.0f, 3.0f).expanded (1.0f), 3.0f);
-        const bool light = theme.lightPanel;
-        fillBrushed (g, plate, light ? theme.panelTop : Colour (0xff3a3c41), light ? theme.panelBottom : Colour (0xff17181b), 0.05f);
-        g.setColour (Colours::black.withAlpha (0.6f));
-        g.drawRoundedRectangle (plate, 3.0f, 1.0f);
-        g.setColour (Colours::white.withAlpha (light ? 0.6f : 0.18f));
-        g.drawHorizontalLine ((int) plate.getY() + 1, plate.getX() + 2.0f, plate.getRight() - 2.0f);
-        const auto ink = light ? theme.text : Colour (0xffe7e8ea);
-        g.setColour (ink.withAlpha (0.92f));
-        g.setFont (spaced (17.0f, true, 0.55f));
-        g.drawText ("EMBER", plate.withTrimmedBottom (18.0f).withTrimmedTop (4.0f), Justification::centred);
-        g.setColour (ink.withAlpha (0.65f));
-        g.setFont (spaced (9.0f, false, 0.6f));
-        g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase() + "  CHANNEL", plate.withTrimmedTop (30.0f).withTrimmedBottom (6.0f), Justification::centred);
-        // corner rivets
-        for (auto p : { plate.getTopLeft().translated (7.0f, 7.0f), plate.getTopRight().translated (-7.0f, 7.0f),
-                        plate.getBottomLeft().translated (7.0f, -7.0f), plate.getBottomRight().translated (-7.0f, -7.0f) })
+        // ---- the emblem: stepped rings around a glowing core
+        auto shade = [&] (float rad, float brightTop, float darkBottom)
         {
-            g.setGradientFill (ColourGradient (Colour (0xffd6d8dc), p.x, p.y - 2.0f, Colour (0xff4f5257), p.x, p.y + 2.0f, false));
-            g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre (p));
+            const auto top = light ? Colours::white.withAlpha (brightTop) : Colours::white.withAlpha (brightTop * 0.25f);
+            g.setGradientFill (ColourGradient (theme.grille.interpolatedWith (Colours::white, light ? brightTop * 0.5f : brightTop * 0.12f), ec.x, ec.y - rad,
+                                               theme.grille.darker (darkBottom), ec.x, ec.y + rad, false));
+            g.fillEllipse (Rectangle<float> (rad * 2.0f, rad * 2.0f).withCentre (ec));
+            g.setColour (top);
+            g.drawEllipse (Rectangle<float> (rad * 2.0f, rad * 2.0f).withCentre (ec).reduced (0.7f), 1.0f);
+            g.setColour (Colours::black.withAlpha (light ? 0.12f : 0.5f));
+            g.drawEllipse (Rectangle<float> (rad * 2.0f, rad * 2.0f).withCentre (ec.translated (0.0f, 1.5f)), 1.0f);
+        };
+        // soft shadow pool
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (light ? 0.18f : 0.45f), ec.x, ec.y + er * 0.1f, Colours::transparentBlack, ec.x + er * 1.15f, ec.y, true));
+        g.fillEllipse (Rectangle<float> (er * 2.3f, er * 2.3f).withCentre (ec.translated (0.0f, er * 0.08f)));
+        shade (er,         0.75f, 0.10f);
+        // segmented outer band
+        g.setColour ((light ? Colours::black : Colours::white).withAlpha (light ? 0.10f : 0.08f));
+        for (int i = 0; i < 6; ++i)
+        {
+            Path seg; const float a0 = (float) i / 6.0f * MathConstants<float>::twoPi + 0.2f;
+            seg.addCentredArc (ec.x, ec.y, er * 0.90f, er * 0.90f, 0.0f, a0, a0 + 0.55f, true);
+            g.strokePath (seg, PathStrokeType (er * 0.07f, PathStrokeType::curved, PathStrokeType::butt));
         }
-    }
+        shade (er * 0.76f, 0.95f, 0.16f);
+        // dotted tick ring
+        g.setColour ((light ? Colours::black : Colours::white).withAlpha (light ? 0.35f : 0.3f));
+        for (int i = 0; i < 72; ++i)
+        {
+            const float a = (float) i / 72.0f * MathConstants<float>::twoPi;
+            if (std::fmod ((float) i, 18.0f) < 4.0f) continue;   // gaps
+            const float rr = er * 0.68f;
+            g.fillRect (Rectangle<float> (1.6f, 3.2f).withCentre ({ ec.x + rr * std::sin (a), ec.y - rr * std::cos (a) }));
+        }
+        shade (er * 0.58f, 1.0f, 0.20f);
+        // fine radial grooves around the core
+        g.setColour ((light ? Colours::black : Colours::white).withAlpha (0.10f));
+        for (int i = 0; i < 120; ++i)
+        {
+            const float a = (float) i / 120.0f * MathConstants<float>::twoPi;
+            g.drawLine (ec.x + er * 0.44f * std::sin (a), ec.y - er * 0.44f * std::cos (a), ec.x + er * 0.53f * std::sin (a), ec.y - er * 0.53f * std::cos (a), 0.6f);
+        }
+        shade (er * 0.42f, 0.9f, 0.25f);
 
-    // ---- control plate
+        // the core: a glass orb lit from inside in the amp's colour
+        const float cr = er * 0.33f;
+        const float glow = shownActive ? 1.0f : 0.45f;
+        g.setGradientFill (ColourGradient (accent.withAlpha (0.55f * glow), ec.x, ec.y, accent.withAlpha (0.0f), ec.x + cr * 1.9f, ec.y, true));
+        g.fillEllipse (Rectangle<float> (cr * 3.8f, cr * 3.8f).withCentre (ec));
+        ColourGradient orb (accent.brighter (0.9f).withMultipliedBrightness (0.6f + 0.4f * glow), ec.x - cr * 0.15f, ec.y - cr * 0.2f,
+                            accent.darker (1.6f), ec.x + cr, ec.y + cr, true);
+        orb.addColour (0.55, accent.withMultipliedBrightness (0.55f + 0.45f * glow));
+        g.setGradientFill (orb);
+        g.fillEllipse (Rectangle<float> (cr * 2.0f, cr * 2.0f).withCentre (ec));
+        // filaments
+        g.setColour (Colours::white.withAlpha (0.55f * glow));
+        for (float a : { -0.55f, 0.6f, 2.9f })
+            g.drawLine (ec.x, ec.y, ec.x + cr * 0.8f * std::sin (a), ec.y - cr * 0.8f * std::cos (a), 1.1f);
+        g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre (ec));
+        // glass reflections
+        g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.55f), ec.x - cr * 0.3f, ec.y - cr * 0.85f,
+                                           Colours::white.withAlpha (0.0f), ec.x - cr * 0.3f, ec.y - cr * 0.1f, false));
+        g.fillEllipse (Rectangle<float> (cr * 1.2f, cr * 0.75f).withCentre (ec.translated (-cr * 0.18f, -cr * 0.52f)));
+        g.setColour (Colours::black.withAlpha (0.45f));
+        g.drawEllipse (Rectangle<float> (cr * 2.0f, cr * 2.0f).withCentre (ec), 1.2f);
+    }
+    // top inner shadow of the recess
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (light ? 0.16f : 0.4f), gr.getX(), gr.getY(), Colours::transparentBlack, gr.getX(), gr.getY() + 14.0f, false));
+    g.fillRect (gr.withHeight (14.0f));
+    g.restoreState();
+
+    // ---- control strip: a separate plate below the face
     const auto pn = panel.toFloat();
-    g.setColour (Colours::black);
-    g.fillRoundedRectangle (pn.expanded (2.0f), 3.0f);
-    fillBrushed (g, pn, theme.panelTop, theme.panelBottom, theme.lightPanel ? 0.06f : 0.025f);
-    g.setColour (Colours::white.withAlpha (theme.lightPanel ? 0.55f : 0.10f));
+    g.setGradientFill (ColourGradient (theme.panelTop, pn.getX(), pn.getY(), theme.panelBottom, pn.getX(), pn.getBottom(), false));
+    g.fillRect (pn);
+    g.setColour (Colours::black.withAlpha (light ? 0.25f : 0.6f));
     g.drawHorizontalLine ((int) pn.getY(), pn.getX(), pn.getRight());
-    g.setColour (Colours::black.withAlpha (0.5f));
-    g.drawRect (pn, 1.0f);
-
-    // hex screws
-    for (auto p : { pn.getTopLeft().translated (10.0f, 10.0f), pn.getTopRight().translated (-10.0f, 10.0f),
-                    pn.getBottomLeft().translated (10.0f, -10.0f), pn.getBottomRight().translated (-10.0f, -10.0f) })
-    {
-        g.setColour (Colours::black.withAlpha (0.5f));
-        g.fillEllipse (Rectangle<float> (7.5f, 7.5f).withCentre (p.translated (0.0f, 0.8f)));
-        g.setGradientFill (ColourGradient (Colour (0xff5a5d63), p.x, p.y - 3.0f, Colour (0xff1c1d20), p.x, p.y + 3.0f, false));
-        g.fillEllipse (Rectangle<float> (6.5f, 6.5f).withCentre (p));
-        g.setColour (Colours::black.withAlpha (0.7f));
-        Path hex; hex.addPolygon (p, 6, 1.6f, 0.0f);
-        g.fillPath (hex);
-    }
+    g.setColour (Colours::white.withAlpha (light ? 0.9f : 0.08f));
+    g.drawHorizontalLine ((int) pn.getY() + 1, pn.getX(), pn.getRight());
+    // three-dot marks in the corners
+    g.setColour (theme.text.withAlpha (0.5f));
+    for (auto p : { pn.getTopRight().translated (-22.0f, 16.0f), pn.getBottomLeft().translated (16.0f, -16.0f) })
+        for (auto o : { Point<float> (0.0f, 0.0f), Point<float> (6.0f, 3.0f), Point<float> (2.0f, 7.0f) })
+            g.fillEllipse (Rectangle<float> (3.0f, 3.0f).withCentre (p + o));
 
     const auto ink = theme.text;
 
-    // input jack (left)
-    const auto jack = Point<float> (pn.getX() + 52.0f, pn.getCentreY() + 6.0f);
-    g.setColour (Colours::black.withAlpha (0.5f));
-    g.fillEllipse (Rectangle<float> (24.0f, 24.0f).withCentre (jack.translated (0.0f, 1.5f)));
-    g.setGradientFill (ColourGradient (Colour (0xffd9dbdf), jack.x, jack.y - 11.0f, Colour (0xff4c4f55), jack.x, jack.y + 11.0f, false));
-    g.fillEllipse (Rectangle<float> (22.0f, 22.0f).withCentre (jack));
-    g.setGradientFill (ColourGradient (Colour (0xff6b6e74), jack.x, jack.y - 6.0f, Colour (0xff1a1b1e), jack.x, jack.y + 6.0f, false));
-    g.fillEllipse (Rectangle<float> (14.0f, 14.0f).withCentre (jack));
-    g.setColour (Colour (0xff050506));
-    g.fillEllipse (Rectangle<float> (7.0f, 7.0f).withCentre (jack));
-    g.setColour (ink.withAlpha (0.75f));
-    g.setFont (spaced (9.0f, false, 0.4f));
-    g.drawText ("INPUT", Rectangle<float> (60.0f, 14.0f).withCentre (jack.translated (0.0f, -26.0f)), Justification::centred);
+    // input jack with a cable running down off the amp
+    const auto jack = Point<float> (pn.getX() + 58.0f, pn.getCentreY() + 4.0f);
+    const auto cableCol = light ? Colour (0xffe9eaec) : Colour (0xff3a3c42);
+    Path cable;
+    cable.startNewSubPath (jack.translated (0.0f, 14.0f));
+    cable.cubicTo (jack.translated (0.0f, 60.0f), jack.translated (-6.0f, (float) cabTop.getY() - jack.y + 40.0f),
+                   jack.translated (-60.0f, (float) cabTop.getY() - jack.y + 70.0f));
+    g.setColour (Colours::black.withAlpha (0.35f));
+    g.strokePath (cable, PathStrokeType (11.0f, PathStrokeType::curved, PathStrokeType::rounded), AffineTransform::translation (3.0f, 4.0f));
+    g.setColour (cableCol.darker (0.25f));
+    g.strokePath (cable, PathStrokeType (10.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    g.setColour (cableCol);
+    g.strokePath (cable, PathStrokeType (6.0f, PathStrokeType::curved, PathStrokeType::rounded), AffineTransform::translation (-1.2f, 0.0f));
+    // plug barrel
+    auto plug = Rectangle<float> (16.0f, 26.0f).withCentre (jack.translated (0.0f, 4.0f));
+    g.setGradientFill (ColourGradient (cableCol.brighter (0.2f), plug.getX(), plug.getY(), cableCol.darker (0.35f), plug.getRight(), plug.getY(), false));
+    g.fillRoundedRectangle (plug, 5.0f);
+    g.setColour (Colours::black.withAlpha (0.3f));
+    g.drawRoundedRectangle (plug, 5.0f, 0.8f);
+    g.setGradientFill (ColourGradient (Colour (0xffd5d7db), jack.x - 9.0f, jack.y, Colour (0xff7d8086), jack.x + 9.0f, jack.y, false));
+    g.fillEllipse (Rectangle<float> (18.0f, 8.0f).withCentre (jack.translated (0.0f, -9.0f)));
+    g.setColour (ink.withAlpha (0.7f));
+    g.setFont (spaced (8.5f, false, 0.5f));
+    g.drawText ("INPUT", Rectangle<float> (60.0f, 12.0f).withCentre (jack.translated (0.0f, -26.0f)), Justification::centred);
 
-    // pilot jewel + wordmark (right)
-    const auto lamp = Point<float> (pn.getRight() - 150.0f, pn.getCentreY() + 6.0f);
-    g.setColour (ink.withAlpha (0.75f));
-    g.setFont (spaced (9.0f, false, 0.4f));
-    g.drawText ("ON", Rectangle<float> (40.0f, 14.0f).withCentre (lamp.translated (0.0f, -26.0f)), Justification::centred);
-    g.setGradientFill (ColourGradient (Colour (0xffcfd1d5), lamp.x, lamp.y - 10.0f, Colour (0xff45484d), lamp.x, lamp.y + 10.0f, false));
-    g.fillEllipse (Rectangle<float> (20.0f, 20.0f).withCentre (lamp));
-    if (shownActive)
+    // power toggle with the pilot light, then the wordmark
+    const auto sw = Point<float> (pn.getRight() - 170.0f, pn.getCentreY() + 4.0f);
+    g.setColour (Colours::black.withAlpha (0.45f));
+    g.fillEllipse (Rectangle<float> (14.0f, 14.0f).withCentre (sw.translated (0.0f, 8.0f)));
+    g.setGradientFill (ColourGradient (Colour (0xffe8e9eb), sw.x - 4.0f, sw.y, Colour (0xff6d7076), sw.x + 4.0f, sw.y, false));
+    g.fillRoundedRectangle (Rectangle<float> (6.0f, 22.0f).withCentre (sw.translated (0.0f, -4.0f)), 3.0f);
+    g.setColour (Colour (0xff1b1c1f));
+    g.fillEllipse (Rectangle<float> (12.0f, 12.0f).withCentre (sw.translated (0.0f, 8.0f)));
+    for (int i = 0; i < 3; ++i)
     {
-        g.setGradientFill (ColourGradient (Colour (0xffff4b2b).withAlpha (0.55f), lamp.x, lamp.y, Colour (0x00ff4b2b), lamp.x + 16.0f, lamp.y, true));
-        g.fillEllipse (Rectangle<float> (32.0f, 32.0f).withCentre (lamp));
+        const auto led = Point<float> (sw.x + 18.0f + (float) i * 9.0f, sw.y + 2.0f);
+        if (shownActive)
+        {
+            g.setColour (accent.withAlpha (0.35f));
+            g.fillEllipse (Rectangle<float> (9.0f, 9.0f).withCentre (led));
+        }
+        g.setColour (shownActive ? accent.brighter (0.5f) : ink.withAlpha (0.25f));
+        g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre (led));
     }
-    g.setGradientFill (ColourGradient (shownActive ? Colour (0xffffb09a) : Colour (0xff4a1c18), lamp.x - 2.0f, lamp.y - 4.0f,
-                                       shownActive ? Colour (0xffd8261a) : Colour (0xff1c0907), lamp.x + 2.0f, lamp.y + 5.0f, false));
-    g.fillEllipse (Rectangle<float> (13.0f, 13.0f).withCentre (lamp));
-    g.setColour (Colours::white.withAlpha (shownActive ? 0.7f : 0.25f));
-    g.fillEllipse (Rectangle<float> (3.5f, 3.0f).withCentre (lamp.translated (-2.0f, -3.0f)));
+    g.setColour (ink.withAlpha (0.85f));
+    g.setFont (spaced (13.0f, true, 0.5f));
+    g.drawText ("EMBER", Rectangle<float> (pn.getRight() - 120.0f, pn.getCentreY() - 14.0f, 100.0f, 18.0f), Justification::centredLeft);
+    g.setColour (ink.withAlpha (0.55f));
+    g.setFont (spaced (8.5f, false, 0.5f));
+    g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase(), Rectangle<float> (pn.getRight() - 120.0f, pn.getCentreY() + 6.0f, 100.0f, 14.0f), Justification::centredLeft);
 
-    g.setColour (ink.withAlpha (0.9f));
-    g.setFont (spaced (13.0f, true, 0.45f));
-    g.drawText ("EMBER", Rectangle<float> (pn.getRight() - 124.0f, pn.getCentreY() - 14.0f, 104.0f, 18.0f), Justification::centredLeft);
-    g.setColour (ink.withAlpha (0.6f));
-    g.setFont (spaced (8.5f, false, 0.45f));
-    g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase(), Rectangle<float> (pn.getRight() - 124.0f, pn.getCentreY() + 6.0f, 104.0f, 14.0f), Justification::centredLeft);
-
-    // ---- cab: the top of the speaker cabinet the head sits on
+    // ---- cabinet top below the head
     const auto ct = cabTop.toFloat();
-    Path cab; cab.addRoundedRectangle (ct.getX(), ct.getY(), ct.getWidth(), ct.getHeight() + 30.0f, 7.0f, 7.0f, true, true, false, false);
-    g.setGradientFill (ColourGradient (Colour (0xff18191c), ct.getX(), ct.getY(), Colour (0xff0a0a0b), ct.getX(), ct.getBottom(), false));
-    g.fillPath (cab);
-    fillTextured (g, cab, tolexTexture());
-    g.setColour (Colours::white.withAlpha (0.09f));
-    g.drawHorizontalLine ((int) ct.getY() + 1, ct.getX() + 7.0f, ct.getRight() - 7.0f);
-    auto band = ct.reduced (22.0f, 0.0f).withTrimmedTop (16.0f).withTrimmedBottom (4.0f);
+    g.setGradientFill (ColourGradient (Colour (0xffcfd1d5), ct.getX(), ct.getY(), Colour (0xff9fa2a8), ct.getX(), ct.getY() + 18.0f, false));
+    g.fillRect (ct.withHeight (18.0f));
+    g.setColour (Colours::white.withAlpha (0.6f));
+    g.drawHorizontalLine ((int) ct.getY(), ct.getX(), ct.getRight());
+    auto body = ct.withTrimmedTop (18.0f);
+    g.setGradientFill (ColourGradient (Colour (0xff4a4c51), body.getX(), body.getY(), Colour (0xff2a2b2f), body.getX(), body.getBottom(), false));
+    g.fillRect (body);
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.45f), body.getX(), body.getY(), Colours::transparentBlack, body.getX(), body.getY() + 10.0f, false));
+    g.fillRect (body.withHeight (10.0f));
+    g.saveState();
+    g.reduceClipRegion (body.toNearestInt());
+    for (int i = 0; i < 2; ++i)   // speakers peeking up from below
     {
-        Path cl; cl.addRectangle (band);
-        g.setColour (Colour (0xff111214));
-        g.fillPath (cl);
-        fillTextured (g, cl, clothTexture(), shownCab ? 0.8f : 0.45f);
+        const float cx = body.getX() + body.getWidth() * (0.25f + 0.5f * (float) i), rr = body.getWidth() * 0.2f;
+        const auto cc = Point<float> (cx, body.getBottom() + rr * 0.78f);
+        g.setGradientFill (ColourGradient (Colour (0xff1a1b1e), cc.x, cc.y - rr, Colour (0xff2c2d31), cc.x, cc.y, false));
+        g.fillEllipse (Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre (cc));
+        g.setColour (Colours::white.withAlpha (shownCab ? 0.10f : 0.04f));
+        g.drawEllipse (Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre (cc), 1.5f);
+    }
+    g.restoreState();
+
+    // ---- where the mic is: a speaker seen from the front, the mic as a dot
+    if (! speakerArea.isEmpty())
+    {
+        const auto sp = speakerArea.toFloat();
+        const auto c = sp.getCentre();
+        const float r = jmin (sp.getWidth(), sp.getHeight()) * 0.5f - 2.0f;
+        const float alpha = shownIR ? 0.35f : 1.0f;
+        g.setGradientFill (ColourGradient (Colour (0xff2b2c31).withMultipliedAlpha (alpha), c.x, c.y - r, Colour (0xff0e0f11).withMultipliedAlpha (alpha), c.x, c.y + r, false));
+        g.fillEllipse (Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (c));
+        g.setColour (Colours::white.withAlpha (0.12f * alpha));
+        for (float f : { 1.0f, 0.78f, 0.55f })
+            g.drawEllipse (Rectangle<float> (r * 2.0f * f, r * 2.0f * f).withCentre (c), 1.0f);
+        g.setGradientFill (ColourGradient (Colour (0xff4a4c52).withMultipliedAlpha (alpha), c.x, c.y - r * 0.3f, Colour (0xff1a1b1e).withMultipliedAlpha (alpha), c.x, c.y + r * 0.3f, false));
+        g.fillEllipse (Rectangle<float> (r * 0.6f, r * 0.6f).withCentre (c));   // dust cap
+        // mic: further out = further from the centre; closer = bigger dot
+        const float px = c.x + jlimit (0.0f, 1.0f, shownPos) * r * 0.92f;
+        const float d = 13.0f - 6.0f * jlimit (0.0f, 1.0f, shownDist);
+        g.setColour (accent.withAlpha (0.30f * alpha));
+        g.fillEllipse (Rectangle<float> (d * 2.0f, d * 2.0f).withCentre ({ px, c.y }));
+        g.setColour (accent.withAlpha (alpha));
+        g.fillEllipse (Rectangle<float> (d, d).withCentre ({ px, c.y }));
+        g.setColour (Colours::white.withAlpha (0.9f * alpha));
+        g.drawEllipse (Rectangle<float> (d, d).withCentre ({ px, c.y }), 1.0f);
     }
 }
 
@@ -876,12 +1000,11 @@ void AmpPage::resized()
 {
     auto r = getLocalBounds();
     cabTop = r.removeFromBottom (110);
-    r.removeFromBottom (26);                                   // space for the feet
-    head = r.reduced (34, 8);
+    r.removeFromBottom (24);                                   // space for the feet
+    head = r.reduced (30, 6);
 
-    auto inner = head.reduced (24, 22);
-    panel  = inner.removeFromBottom (juce::roundToInt (inner.getHeight() * 0.40f));
-    inner.removeFromBottom (14);
+    auto inner = head.reduced (34, 32);
+    panel  = inner.removeFromBottom (juce::jmax (120, juce::roundToInt ((float) inner.getHeight() * 0.36f)));
     grille = inner;
 
     // knobs across the panel, between the input jack and the pilot light
@@ -890,14 +1013,33 @@ void AmpPage::resized()
     for (auto* k : knobs)
         k->setBounds (kr.removeFromLeft (kw).reduced (4, 0));
 
-    // cab controls on the cab top
-    auto cab = cabTop.reduced (60, 0).withTrimmedTop (34).withHeight (34);
-    cabButton.setBounds (cab.removeFromLeft (84));
-    cab.removeFromLeft (14);
-    irLabel.setBounds (cab.removeFromLeft (cab.getWidth() - 220));
-    clearIRButton.setBounds (cab.removeFromRight (90).reduced (0, 3));
-    cab.removeFromRight (10);
-    loadIRButton.setBounds (cab.removeFromRight (110).reduced (0, 3));
+    // cab strip: [CAB] [cabinet] [microphone] (position) (distance) speaker | IR name [LOAD IR] [CLEAR]
+    auto strip = cabTop.withTrimmedTop (22).withTrimmedBottom (4).reduced (60, 0).withTrimmedLeft (60);   // clear of the cable
+    auto centreRow = [&] (juce::Rectangle<int> col, int h) { return col.withSizeKeepingCentre (col.getWidth(), h); };
+    cabButton.setBounds (centreRow (strip.removeFromLeft (84), 34));
+    strip.removeFromLeft (14);
+    {
+        auto col = centreRow (strip.removeFromLeft (180), 50);
+        cabTitle.setBounds (col.removeFromTop (16));
+        cabBox.setBounds (col.removeFromTop (32));
+    }
+    strip.removeFromLeft (10);
+    {
+        auto col = centreRow (strip.removeFromLeft (150), 50);
+        micTitle.setBounds (col.removeFromTop (16));
+        micBox.setBounds (col.removeFromTop (32));
+    }
+    strip.removeFromLeft (8);
+    posKnob->setBounds (strip.removeFromLeft (76));
+    distKnob->setBounds (strip.removeFromLeft (76));
+    strip.removeFromLeft (6);
+    speakerArea = centreRow (strip.removeFromLeft (78), 78);
+    strip.removeFromLeft (14);
+    clearIRButton.setBounds (centreRow (strip.removeFromRight (80), 28));
+    strip.removeFromRight (8);
+    loadIRButton.setBounds (centreRow (strip.removeFromRight (96), 28));
+    strip.removeFromRight (10);
+    irLabel.setBounds (centreRow (strip, 28));
 }
 
 //==============================================================================
@@ -1326,12 +1468,34 @@ void EmberAmpEditor::paint (juce::Graphics& g)
     const auto b = getLocalBounds().toFloat();
 
     // stage: near-black with a soft spotlight behind the amp
-    g.setGradientFill (ColourGradient (Colour (0xff121315), b.getCentreX(), 0.0f, Colour (0xff08090a), b.getCentreX(), b.getBottom(), false));
-    g.fillAll();
-    const auto st = stageArea.toFloat();
-    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.025f), st.getCentreX(), st.getY() + st.getHeight() * 0.4f,
-                                       Colours::transparentBlack, st.getCentreX() + st.getWidth() * 0.6f, st.getY() + st.getHeight() * 0.4f, true));
-    g.fillRect (st.expanded (0.0f, 60.0f));
+    // night sky: deep indigo with a scatter of stars (rendered once per window size)
+    if (starfield.getWidth() != getWidth() || starfield.getHeight() != getHeight())
+    {
+        starfield = Image (Image::RGB, jmax (1, getWidth()), jmax (1, getHeight()), false);
+        Graphics sg (starfield);
+        const auto sb = starfield.getBounds().toFloat();
+        ColourGradient sky (Colour (0xff141634), sb.getCentreX(), sb.getHeight() * 0.35f, Colour (0xff05060f), sb.getRight(), sb.getBottom(), true);
+        sky.addColour (0.5, Colour (0xff0c0d22));
+        sg.setGradientFill (sky);
+        sg.fillAll();
+        Random rng (42);
+        const int count = (int) (sb.getWidth() * sb.getHeight() / 900.0f);
+        for (int i = 0; i < count; ++i)
+        {
+            const float x = rng.nextFloat() * sb.getWidth(), y = rng.nextFloat() * sb.getHeight();
+            const float m = rng.nextFloat();
+            const float size = m > 0.985f ? 2.4f : m > 0.9f ? 1.5f : 1.0f;
+            const float alpha = 0.15f + 0.6f * rng.nextFloat() * (size > 1.4f ? 1.0f : 0.6f);
+            if (size > 2.0f)
+            {
+                sg.setGradientFill (ColourGradient (Colours::white.withAlpha (0.35f), x, y, Colours::white.withAlpha (0.0f), x + 6.0f, y, true));
+                sg.fillEllipse (x - 6.0f, y - 6.0f, 12.0f, 12.0f);
+            }
+            sg.setColour (Colour (0xffdfe4ff).withAlpha (alpha));
+            sg.fillEllipse (x - size * 0.5f, y - size * 0.5f, size, size);
+        }
+    }
+    g.drawImageAt (starfield, 0, 0);
 
     // logo (top-left)
     if (logo.isValid())

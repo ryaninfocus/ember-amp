@@ -16,13 +16,14 @@ The first time you open it, your computer will ask once, because Ember Amp isn't
 - **Windows:** click **More info → Run anyway**.
 
 ## What's inside
-- **4 amps**, each with its own cab and 5 presets:
+- **4 amps**, each with 5 presets:
   - **Clean:** Normal Clean, Glass Clean, Ambient Swell, Warm Jazz, Chorus Clean
   - **Crunch:** Classic Crunch, Blues Breaker, British Roar, Edge of Breakup, Rock Rhythm
   - **Distortion:** Prog Metal Rhythm, Djent Tight, Drop C Chug, Octave Doom, Texas Special
   - **Solo:** Singing Lead, Shred, Liquid Legato, Harmony Fifth, Texas Scoop Lead
 - **8 pedals:** gate, compressor, overdrive, distortion, pitch shifter, chorus, delay and reverb.
 - **Stream to Discord:** the STREAM switch sends the amp (plus your mic) to a free virtual cable (BlackHole on Mac, VB-Audio Cable on Windows), so you can play in Discord, OBS or Zoom without sharing your screen.
+- **Cabs and mics:** 6 cabinets, 4 microphones, mic position and distance on every amp; each preset has its own setup.
 - **Other features:** a tuner, IR loading (drag a .wav onto the window), saving your own presets, an optional Dynamics switch, and loudness-matched presets.
 
 ## Build it yourself
