@@ -83,26 +83,26 @@ namespace
         // ---- Clean
         // a plain, open clean: flat EQ, light sustain, a touch of room, nothing on top
         { "Normal Clean",       0, 0.25f, 5.0f, 5.0f, 6.5f, 6.5f,   0.0f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.00f },
-        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   1.9f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
-        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   2.7f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
+        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   2.2f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
+        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   4.2f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
         { "Warm Jazz",          0, 0.426f, 6.5f, 5.0f, 4.5f, 3.5f,   -2.2f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f },
         { "Chorus Clean",       0, 0.22f, 5.0f, 5.0f, 6.5f, 6.5f,   0.2f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f,  true, 0.70f, 0.55f, 0.50f },
         // ---- Crunch
         { "Classic Crunch",     1, 0.70f, 6.0f, 6.0f, 6.0f, 6.0f,   3.2f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f },
-        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   7.8f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
+        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   8.2f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
         { "British Roar",       1, 0.90f, 5.5f, 7.0f, 6.5f, 6.5f,   -0.4f, false, 0.20f,  true, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.10f, 1.00f, 0.20f },
         { "Edge of Breakup",    1, 0.76f, 5.5f, 5.5f, 6.0f, 5.5f,   5.5f,  false, 0.25f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.40f, 0.18f, 1.00f, 0.20f },
-        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  -0.8f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
+        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  -1.0f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
         // ---- Distortion
         { "Prog Metal Rhythm",  2, 0.72f, 4.5f, 6.0f, 6.0f, 6.5f,  -0.2f, false, 0.20f,  false, 0.55f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.55f },
-        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  0.1f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
-        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  -1.0f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
+        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  -0.2f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
+        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  -1.2f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
         { "Octave Doom",        2, 0.72f, 4.0f, 5.5f, 5.5f, 5.5f,   -1.2f, false, 0.20f,  false, 0.55f,  true, -12, 0.40f, false, 300.0f, 0.15f, 0.20f,  true, 0.50f, 0.15f, 1.00f, 0.55f },
-        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   0.8f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
+        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   0.3f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
         // ---- Solo
         { "Singing Lead",       3, 0.72f, 5.0f, 7.0f, 6.0f, 6.0f,  -2.8f,  false, 0.50f,  true, 0.45f, false,  -2, 1.00f,  true, 450.0f, 0.35f, 0.22f,  true, 0.55f, 0.20f, 1.00f, 0.55f },
-        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  -1.7f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
-        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  -3.3f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
+        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  -1.6f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
+        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  -3.2f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
         { "Harmony Fifth",      3, 0.75f, 5.0f, 7.0f, 6.0f, 6.0f,  -2.1f,  false, 0.35f,  true, 0.50f,  true,   7, 0.45f,  true, 420.0f, 0.30f, 0.20f,  true, 0.50f, 0.20f, 1.00f, 0.55f },
         { "Texas Scoop Lead",   3, 0.95f, 6.5f, 3.0f, 7.0f, 7.5f,  -3.3f,  false, 0.35f,  true, 0.60f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.18f,  true, 0.40f, 0.15f, 1.00f, 0.55f },
     };
@@ -729,7 +729,7 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
                      &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
-                     &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak })
+                     &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak, &micPosPeak, &micPosLowMid, &widthHp })
         b->reset();
     std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
     reflPos = 0;
@@ -760,6 +760,10 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
         dblDelay.setCurrentAndTargetValue (pDoublerSpread->load() * 0.001f * (float) sampleRate);
         monoAmount.reset (sampleRate, 0.05);
         monoAmount.setCurrentAndTargetValue (pMonoOut->load() > 0.5f ? 1.0f : 0.0f);
+        stereoWidth.reset (sampleRate, 0.05);
+        stereoWidth.setCurrentAndTargetValue (pMonoOut->load() > 0.5f ? 0.0f : 1.0f);
+        widthHp.set (Coeffs::makeHighPass (sampleRate, 250.0, 0.707f));   // keep the lows centred
+        for (int k = 0; k < 4; ++k) widthAp[k] = widthApPrev[k] = 0.0f;
     }
     updateEq (true);
     eqWet.reset (sampleRate, 0.03);
@@ -865,9 +869,9 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
         float lowDb = 0.0f, peakHz = 2800.0f, peakDb = 0.0f;
         switch ((int) spkV)
         {
-            case 2:  peakHz = 2800.0f; peakDb = 1.2f;  break;                    // a little brighter
-            case 3:  lowDb = 1.5f;     peakHz = 3500.0f; peakDb = -1.0f; break;  // bottom: fuller, softer top
-            case 4:  lowDb = 1.2f;     peakHz = 2200.0f; peakDb = 0.8f;  break;  // bottom: fuller, more bark
+            case 2:  peakHz = 2800.0f; peakDb = 2.5f;  break;                    // brighter, more bite
+            case 3:  lowDb = 3.0f;     peakHz = 3500.0f; peakDb = -2.5f; break;  // bottom: fuller, softer top
+            case 4:  lowDb = 2.5f;     peakHz = 2000.0f; peakDb = 2.0f;  break;  // bottom: fuller, more bark
             default: break;                                                      // speaker 1: the reference
         }
         micSpkLow.set  (Coeffs::makeLowShelf   (sr, 120.0f, 0.7f, dB (lowDb)));
@@ -876,15 +880,19 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
     if (force || posV != lastMicPos)
     {
         lastMicPos = posV;
-        micPosShelf.set (Coeffs::makeHighShelf (sr, 3200.0f, 0.6f, dB ((0.35f - posV) * 9.0f)));   // neutral at 35%
+        // neutral at 35%: toward the cap = brighter, more bite; toward the edge = darker, warmer
+        micPosShelf.set  (Coeffs::makeHighShelf  (sr, 2500.0f, 0.6f, dB ((0.35f - posV) * 16.0f)));
+        micPosPeak.set   (Coeffs::makePeakFilter (sr, 4200.0f, 1.0f, dB ((0.35f - posV) * 8.0f)));
+        micPosLowMid.set (Coeffs::makePeakFilter (sr, 320.0f, 0.8f, dB ((posV - 0.35f) * 5.0f)));
     }
     if (force || distV != lastMicDist)
     {
         lastMicDist = distV;
         const float far = juce::jmax (0.0f, distV - 0.15f) / 0.85f;                                  // neutral at 15% (4.5 cm)
-        micDistLow.set  (Coeffs::makeLowShelf  (sr, 140.0f, 0.7f, dB ((0.15f - distV) * 7.0f)));
-        micDistHigh.set (Coeffs::makeHighShelf (sr, 7000.0f, 0.7f, dB (-5.0f * far)));
-        reflGain  = 0.35f * far;
+        // close = proximity bass; far = thinner, darker, and more of the room
+        micDistLow.set  (Coeffs::makeLowShelf  (sr, 160.0f, 0.7f, dB ((0.15f - distV) * 13.0f)));
+        micDistHigh.set (Coeffs::makeHighShelf (sr, 6000.0f, 0.7f, dB (-9.0f * far)));
+        reflGain  = 0.6f * far;
         reflDelay = juce::jmin ((float) reflBuf.size() - 2.0f, (0.0006f + 0.0024f * distV) * sr);
     }
 }
@@ -1045,7 +1053,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             activeAmp = want;
             for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
                              &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
-                             &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak })
+                             &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak, &micPosPeak, &micPosLowMid })
                 b->reset();
             std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
             setAmpVoicing (activeAmp);
@@ -1305,6 +1313,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                 float y = cabLp2.process (cabLp1.process (cabBite.process (cabComb.process (cabScoop.process (cabLowRes.process (cabHp.process (x[i])))))));
                 y = micDistHigh.process (micDistLow.process (micPosShelf.process (micB.process (micA.process (y)))));
                 y = micSpkPeak.process (micSpkLow.process (y));
+                y = micPosLowMid.process (micPosPeak.process (y));
                 reflBuf[(size_t) reflPos] = y;
                 if (reflGain > 0.0f)
                     y += reflGain * reflBuf[(size_t) ((reflPos - rd) & rbMask)];
@@ -1361,6 +1370,31 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     {
         buffer.copyFrom (c, 0, mono, 0, 0, n);
         buffer.applyGain (c, 0, n, headroom);
+    }
+
+    // ===== Stereo mode: the amp itself gets width (no doubler needed) =====
+    // side = the amp above 250 Hz through a chain of all-pass filters (same tone, scrambled phase);
+    // L = mid + side, R = mid - side, so L + R is exactly the mono sound (nothing cancels in mono)
+    stereoWidth.setTargetValue (pMonoOut->load() > 0.5f ? 0.0f : 1.0f);
+    if (numOut > 1 && (stereoWidth.isSmoothing() || stereoWidth.getTargetValue() > 0.0f))
+    {
+        auto* L = buffer.getWritePointer (0);
+        auto* R = buffer.getWritePointer (1);
+        static constexpr float apCoef[4] = { 0.62f, -0.35f, 0.78f, -0.55f };
+        for (int i = 0; i < n; ++i)
+        {
+            float sgl = widthHp.process (L[i]);
+            for (int k = 0; k < 4; ++k)   // first-order all-pass stages
+            {
+                const float y = apCoef[k] * sgl + widthApPrev[k] - apCoef[k] * widthAp[k];
+                widthApPrev[k] = sgl;
+                widthAp[k] = y;
+                sgl = y;
+            }
+            const float side = 0.72f * stereoWidth.getNextValue() * sgl;
+            L[i] += side;
+            R[i] -= side;
+        }
     }
 
     // ===== Doubler: the right side becomes a second "take": later by Spread, drifting slightly in pitch =====

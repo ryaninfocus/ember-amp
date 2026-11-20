@@ -246,6 +246,11 @@ private:
     Biquad depth;                                 // post-cab low resonance
     Biquad micA, micB, micPosShelf, micDistLow, micDistHigh;   // the mic: its type, where it points, how far back
     Biquad micSpkLow, micSpkPeak;                              // which speaker in the cab is miked
+    Biquad micPosPeak, micPosLowMid;                           // mic position: presence bite at the centre, warmth at the edge
+    // stereo mode: a mono-compatible width (side = decorrelated copy, added to L and subtracted from R)
+    Biquad widthHp;
+    float widthAp[4] = {}, widthApPrev[4] = {};
+    juce::SmoothedValue<float> stereoWidth;
     float lastMicSpeaker = -1.0f;
     std::vector<float> reflBuf = std::vector<float> (2048, 0.0f);   // far mic: a short reflection off the floor/room
     int reflPos = 0;

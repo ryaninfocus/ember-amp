@@ -8,6 +8,10 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.4.11
+- **Stereo / Mono** works on its own: Stereo gives the amp a natural width (mono-safe), Mono keeps it centred. The doubler is optional on top.
+- **Mic placement** makes a much bigger difference: the centre of the cone is brighter with more bite, the edge darker and warmer; close up adds bass, far back is thinner and roomier; each speaker sounds more distinct. Presets are re-matched in volume.
+
 ## New in 1.4.7
 - **EQ:** one ON/OFF switch for the whole EQ. Every band and both cuts can go anywhere from 20 Hz to 20 kHz, with up to +-18 dB.
 - **Low and high cut:** drag the LC / HC handles in from the ends of the graph to switch them on (steep 24 dB/octave); drag back to the end or double-click to switch them off.
