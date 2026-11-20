@@ -1318,7 +1318,7 @@ CabPage::CabPage (EmberAmpEditor& e, EmberAmpProcessor& p) : ed (e), proc (p)
     hint.setFont (juce::FontOptions (12.0f));
     hint.setColour (juce::Label::textColourId, Palette::muted);
     hint.setJustificationType (juce::Justification::centred);
-    hint.setText ("Drag the mic anywhere on the cab  -  scroll sideways (or Shift + scroll) to slide it  -  scroll up / down for closer or further", juce::dontSendNotification);
+    hint.setText ("Click a speaker to mic it  -  drag or scroll sideways to move the mic across the cone  -  scroll up / down for closer or further", juce::dontSendNotification);
     hint.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (hint);
 
@@ -1720,16 +1720,15 @@ void CabPage::resized()
     clearIRButton.setBounds (irRow);
 }
 
-// put the mic at a point on the cab: it goes on the nearest speaker, at that distance from its centre
-void CabPage::placeMicAt (juce::Point<float> p)
+// put the mic at a point: on the miked speaker (stopping at its edge), or - only when you click
+// on another speaker - on that one
+void CabPage::placeMicAt (juce::Point<float> p, bool mayChangeSpeaker)
 {
     int best = mikedSpeaker();
-    float bestD = 1.0e9f;
-    for (int i = 0; i < speakerCount(); ++i)
-    {
-        const float d = p.getDistanceFrom (speakerCentreAt (i));
-        if (d < bestD) { bestD = d; best = i; }
-    }
+    if (mayChangeSpeaker)
+        for (int i = 0; i < speakerCount(); ++i)
+            if (i != best && p.getDistanceFrom (speakerCentreAt (i)) < speakerRadius() * 1.05f)
+                best = i;
     const auto c = speakerCentreAt (best);
     const auto d = p - c;
     if (d.getDistanceFromOrigin() > 2.0f) micAngle = std::atan2 (d.y, d.x);
@@ -1756,13 +1755,13 @@ void CabPage::mouseDown (const juce::MouseEvent& e)
     dragging = true;
     for (auto* id : { "micPos", "micSpeaker" })
         if (auto* prm = param (id)) prm->beginChangeGesture();
-    placeMicAt (e.position);   // click anywhere on a speaker: the mic goes there
+    placeMicAt (e.position, true);    // click a speaker: the mic goes there (and to that speaker)
 }
 
 void CabPage::mouseDrag (const juce::MouseEvent& e)
 {
     if (! dragging) return;
-    placeMicAt (e.position);   // drag across the cab: it hops to whichever speaker you're over
+    placeMicAt (e.position, false);   // dragging stays on the miked speaker
 }
 
 void CabPage::mouseUp (const juce::MouseEvent&)
@@ -1784,7 +1783,7 @@ void CabPage::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelD
     {
         auto p = micPoint();
         p.x = juce::jlimit ((float) cabView.getX() + 50.0f, (float) cabView.getRight() - 50.0f, p.x - sideways * speed * 260.0f);
-        placeMicAt (p);
+        placeMicAt (p, false);
         return;
     }
     // up / down: closer or further (the drawn mic glides there, see timerCallback)
@@ -1859,10 +1858,11 @@ void EqPage::paint (juce::Graphics& g)
     g.drawRoundedRectangle (ca.reduced (0.5f), 10.0f, 1.0f);
     auto xFor = [this] (double hz) { return xForHz (hz); };
     auto yFor = [this] (float db) { return yForDb (db); };
-    const double nyquist = 0.5 * (proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000.0);
+    const double maxHz = topHz();
     g.setFont (spaced (9.0f, false, 0.1f));
     for (double hz : { 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0 })
     {
+        if (hz > maxHz * 0.95) continue;
         g.setColour (Colours::white.withAlpha (0.06f));
         g.drawVerticalLine ((int) xFor (hz), plot.getY(), plot.getBottom());
         g.setColour (Palette::muted);
@@ -1875,17 +1875,15 @@ void EqPage::paint (juce::Graphics& g)
         g.setColour (Palette::muted);
         g.drawText ((db > 0 ? "+" : "") + String ((int) db), Rectangle<float> (30.0f, 12.0f).withPosition (ca.getX() + 6.0f, yFor (db) - 6.0f), Justification::centredLeft);
     }
-    // only up to the highest frequency your audio device can carry (above that, nothing exists to EQ)
-    const double topHz = jmin (20000.0, nyquist * 0.98);
     Path curve, fill;
     for (int i = 0; i <= 240; ++i)
     {
-        const double hz = 20.0 * std::pow (topHz / 20.0, (double) i / 240.0);
+        const double hz = 20.0 * std::pow (maxHz / 20.0, (double) i / 240.0);
         const float x = xFor (hz), y = yFor (proc.getEqResponseDb (hz));
         if (i == 0) { curve.startNewSubPath (x, y); fill.startNewSubPath (x, yFor (0.0f)); fill.lineTo (x, y); }
         else        { curve.lineTo (x, y); fill.lineTo (x, y); }
     }
-    fill.lineTo (xFor (topHz), yFor (0.0f));
+    fill.lineTo (xFor (maxHz), yFor (0.0f));
     fill.closeSubPath();
     const auto curveCol = on ? accent : Palette::muted;
     g.setColour (curveCol.withAlpha (0.15f));
@@ -1959,8 +1957,10 @@ void EqPage::paint (juce::Graphics& g)
     }
 }
 
-float EqPage::xForHz (double hz) const   { return plot.getX() + plot.getWidth() * (float) (std::log (juce::jmax (20.0, hz) / 20.0) / std::log (1000.0)); }
-double EqPage::hzForX (float x) const    { return 20.0 * std::pow (1000.0, (double) juce::jlimit (0.0f, 1.0f, (x - plot.getX()) / plot.getWidth())); }
+// the graph runs from 20 Hz to the top of what your audio device carries (20 kHz at 44.1 / 48 kHz)
+double EqPage::topHz() const             { return juce::jmin (20000.0, 0.49 * (proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000.0)); }
+float EqPage::xForHz (double hz) const   { return plot.getX() + plot.getWidth() * (float) (std::log (juce::jmax (20.0, hz) / 20.0) / std::log (topHz() / 20.0)); }
+double EqPage::hzForX (float x) const    { return 20.0 * std::pow (topHz() / 20.0, (double) juce::jlimit (0.0f, 1.0f, (x - plot.getX()) / plot.getWidth())); }
 float EqPage::yForDb (float db) const    { return juce::jmap (juce::jlimit (-15.0f, 15.0f, db), 15.0f, -15.0f, plot.getY(), plot.getBottom()); }
 float EqPage::dbForY (float y) const     { return juce::jmap (y, plot.getY(), plot.getBottom(), 15.0f, -15.0f); }
 

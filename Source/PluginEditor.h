@@ -176,7 +176,7 @@ private:
     int speakerCount() const;
     int mikedSpeaker() const;                           // 0-based
     void timerCallback() override;                      // glides the drawn mic toward its settings
-    void placeMicAt (juce::Point<float>);               // nearest speaker, at that distance from its centre
+    void placeMicAt (juce::Point<float>, bool mayChangeSpeaker);   // on the miked speaker (or the one clicked)
     juce::Point<float> micPoint() const;
 
     EmberAmpEditor& ed;
@@ -220,6 +220,7 @@ private:
     juce::Rectangle<int> curveArea, unit, face;
     juce::Rectangle<float> plot;      // the graph inside curveArea
     int amp = -1, dragBand = -1;
+    double topHz() const;
     float xForHz (double hz) const;
     double hzForX (float x) const;
     float yForDb (float db) const;
