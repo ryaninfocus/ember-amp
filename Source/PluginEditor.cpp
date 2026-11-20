@@ -1877,15 +1877,6 @@ void EqPage::paint (juce::Graphics& g)
     }
     // only up to the highest frequency your audio device can carry (above that, nothing exists to EQ)
     const double topHz = jmin (20000.0, nyquist * 0.98);
-    if (topHz < 19000.0)
-    {
-        g.setColour (Colours::white.withAlpha (0.04f));
-        g.fillRect (Rectangle<float> (xFor (topHz), plot.getY(), plot.getRight() - xFor (topHz), plot.getHeight()));
-        g.setColour (Palette::muted);
-        g.setFont (spaced (9.0f, false, 0.1f));
-        g.drawFittedText ("above " + String (roundToInt (nyquist / 1000.0)) + " kHz: your audio device's limit",
-                          Rectangle<float> (xFor (topHz) + 6.0f, plot.getY() + 4.0f, plot.getRight() - xFor (topHz) - 8.0f, 30.0f).toNearestInt(), Justification::topLeft, 2);
-    }
     Path curve, fill;
     for (int i = 0; i <= 240; ++i)
     {
