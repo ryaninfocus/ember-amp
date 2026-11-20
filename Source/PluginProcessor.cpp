@@ -82,29 +82,29 @@ namespace
     const FactoryPreset factory[] = {
         // ---- Clean
         // a plain, open clean: flat EQ, light sustain, a touch of room, nothing on top
-        { "Normal Clean",       0, 0.25f, 5.0f, 5.0f, 6.5f, 6.5f,   0.7f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.00f },
-        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   1.0f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
-        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   4.8f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
-        { "Warm Jazz",          0, 0.426f, 6.5f, 5.0f, 4.5f, 3.5f,   -4.1f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f },
-        { "Chorus Clean",       0, 0.22f, 5.0f, 5.0f, 6.5f, 6.5f,   0.4f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f,  true, 0.70f, 0.55f, 0.50f },
+        { "Normal Clean",       0, 0.25f, 5.0f, 5.0f, 6.5f, 6.5f,   -0.3f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.00f },
+        { "Glass Clean",        0, 0.294f, 5.5f, 4.5f, 6.5f, 6.0f,   0.7f,  false, 0.30f, false, 0.30f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.15f,  true, 0.60f, 0.25f, 1.00f, 0.00f },
+        { "Ambient Swell",      0, 0.197f, 5.0f, 4.0f, 7.0f, 6.0f,   2.7f,  false, 0.60f, false, 0.30f, false,  -2, 1.00f,  true, 650.0f, 0.60f, 0.35f,  true, 0.95f, 0.42f, 1.00f, 0.00f },
+        { "Warm Jazz",          0, 0.426f, 6.5f, 5.0f, 4.5f, 3.5f,   -5.0f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f },
+        { "Chorus Clean",       0, 0.22f, 5.0f, 5.0f, 6.5f, 6.5f,   -1.0f, false, 0.30f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.45f, 0.18f, 1.00f, 0.00f,  true, 0.70f, 0.55f, 0.50f },
         // ---- Crunch
-        { "Classic Crunch",     1, 0.70f, 6.0f, 6.0f, 6.0f, 6.0f,   2.8f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f },
-        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   6.9f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
-        { "British Roar",       1, 0.90f, 5.5f, 7.0f, 6.5f, 6.5f,   1.1f, false, 0.20f,  true, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.10f, 1.00f, 0.20f },
-        { "Edge of Breakup",    1, 0.76f, 5.5f, 5.5f, 6.0f, 5.5f,   4.6f,  false, 0.25f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.40f, 0.18f, 1.00f, 0.20f },
-        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  1.7f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
+        { "Classic Crunch",     1, 0.70f, 6.0f, 6.0f, 6.0f, 6.0f,   3.0f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f },
+        { "Blues Breaker",      1, 0.35f, 5.0f, 6.5f, 5.5f, 5.0f,   5.2f,  false, 0.20f,  true, 0.15f, false,  -2, 1.00f,  true, 120.0f, 0.10f, 0.10f,  true, 0.40f, 0.15f, 1.00f, 0.20f },
+        { "British Roar",       1, 0.90f, 5.5f, 7.0f, 6.5f, 6.5f,   0.8f, false, 0.20f,  true, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.10f, 1.00f, 0.20f },
+        { "Edge of Breakup",    1, 0.76f, 5.5f, 5.5f, 6.0f, 5.5f,   3.6f,  false, 0.25f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.40f, 0.18f, 1.00f, 0.20f },
+        { "Rock Rhythm",        1, 0.35f, 5.5f, 6.0f, 6.0f, 6.5f,  0.5f, false, 0.20f, false, 0.30f, false,  -2, 1.00f, false, 300.0f, 0.20f, 0.10f,  true, 0.35f, 0.12f, 1.00f, 0.20f,  false, 0.80f, 0.50f, 0.50f,  true, 0.60f, 0.55f, 0.50f },   // DS-style pedal into a just-breaking-up amp
         // ---- Distortion
-        { "Prog Metal Rhythm",  2, 0.72f, 4.5f, 6.0f, 6.0f, 6.5f,  0.1f, false, 0.20f,  false, 0.55f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.55f },
-        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  -0.4f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
-        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  -2.5f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
-        { "Octave Doom",        2, 0.72f, 4.0f, 5.5f, 5.5f, 5.5f,   -0.7f, false, 0.20f,  false, 0.55f,  true, -12, 0.40f, false, 300.0f, 0.15f, 0.20f,  true, 0.50f, 0.15f, 1.00f, 0.55f },
-        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   -1.2f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
+        { "Prog Metal Rhythm",  2, 0.72f, 4.5f, 6.0f, 6.0f, 6.5f,  1.6f, false, 0.20f,  false, 0.55f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.55f },
+        { "Djent Tight",        2, 0.65f, 4.5f, 6.0f, 6.5f, 7.0f,  0.6f, false, 0.20f,  false, 0.80f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f, true, 0.30f, 0.10f, 1.00f, 0.80f },
+        { "Drop C Chug",        2, 0.72f, 4.5f, 5.5f, 6.0f, 6.5f,  0.8f, false, 0.20f,  false, 0.60f,  true,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.60f },
+        { "Octave Doom",        2, 0.72f, 4.0f, 5.5f, 5.5f, 5.5f,   1.2f, false, 0.20f,  false, 0.55f,  true, -12, 0.40f, false, 300.0f, 0.15f, 0.20f,  true, 0.50f, 0.15f, 1.00f, 0.55f },
+        { "Texas Special",      2, 0.80f, 4.0f, 2.5f, 7.0f, 7.0f,   0.1f, false, 0.20f,   true, 0.50f, false,  -2, 1.00f, false, 300.0f, 0.15f, 0.20f,  true, 0.30f, 0.10f, 1.00f, 0.70f },   // Pantera-style: scooped, tight, bright
         // ---- Solo
-        { "Singing Lead",       3, 0.72f, 5.0f, 7.0f, 6.0f, 6.0f,  2.6f,  false, 0.50f,  true, 0.45f, false,  -2, 1.00f,  true, 450.0f, 0.35f, 0.22f,  true, 0.55f, 0.20f, 1.00f, 0.55f },
-        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  2.7f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
-        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  2.5f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
-        { "Harmony Fifth",      3, 0.75f, 5.0f, 7.0f, 6.0f, 6.0f,  2.1f,  false, 0.35f,  true, 0.50f,  true,   7, 0.45f,  true, 420.0f, 0.30f, 0.20f,  true, 0.50f, 0.20f, 1.00f, 0.55f },
-        { "Texas Scoop Lead",   3, 0.95f, 6.5f, 3.0f, 7.0f, 7.5f,  2.0f,  false, 0.35f,  true, 0.60f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.18f,  true, 0.40f, 0.15f, 1.00f, 0.55f },
+        { "Singing Lead",       3, 0.72f, 5.0f, 7.0f, 6.0f, 6.0f,  0.9f,  false, 0.50f,  true, 0.45f, false,  -2, 1.00f,  true, 450.0f, 0.35f, 0.22f,  true, 0.55f, 0.20f, 1.00f, 0.55f },
+        { "Shred",              3, 0.90f, 4.5f, 6.5f, 6.5f, 7.0f,  0.6f,  false, 0.35f,  true, 0.70f, false,  -2, 1.00f,  true, 360.0f, 0.22f, 0.16f,  true, 0.35f, 0.14f, 1.00f, 0.55f },
+        { "Liquid Legato",      3, 0.75f, 5.0f, 7.5f, 5.5f, 5.5f,  1.5f,  false, 0.65f,  true, 0.35f, false,  -2, 1.00f,  true, 520.0f, 0.40f, 0.25f,  true, 0.70f, 0.28f, 1.00f, 0.55f },
+        { "Harmony Fifth",      3, 0.75f, 5.0f, 7.0f, 6.0f, 6.0f,  0.8f,  false, 0.35f,  true, 0.50f,  true,   7, 0.45f,  true, 420.0f, 0.30f, 0.20f,  true, 0.50f, 0.20f, 1.00f, 0.55f },
+        { "Texas Scoop Lead",   3, 0.95f, 6.5f, 3.0f, 7.0f, 7.5f,  1.9f,  false, 0.35f,  true, 0.60f, false,  -2, 1.00f,  true, 380.0f, 0.25f, 0.18f,  true, 0.40f, 0.15f, 1.00f, 0.55f },
     };
     static_assert (std::size (factory) == EmberAmpProcessor::numAmps * EmberAmpProcessor::presetsPerAmp);
 
