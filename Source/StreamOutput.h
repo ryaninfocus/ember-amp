@@ -22,6 +22,8 @@ public:
         juce::String micDevice;               // usually your interface; empty = no mic
         int micChannel = -1;                  // 0-based input channel, -1 = no mic
         double sampleRate = 48000.0;
+        int bufferSize = 256;                 // same as your main audio setting: a mic on the same interface
+                                              // shares its buffer, so a different size would override yours
     };
 
     /** Opens the stream device. Returns an error message, or empty on success. */

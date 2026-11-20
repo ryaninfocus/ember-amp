@@ -81,7 +81,7 @@ juce::String StreamOutput::start (const Settings& s)
     setup.inputDeviceName = {};
     setup.useDefaultInputChannels = false;
     setup.sampleRate = s.sampleRate;
-    setup.bufferSize = 256;
+    setup.bufferSize = s.bufferSize;
 
     auto err = dm.setAudioDeviceSetup (setup, false);
     if (err.isEmpty() && dm.getCurrentAudioDevice() == nullptr)
@@ -102,7 +102,7 @@ juce::String StreamOutput::start (const Settings& s)
         ms.useDefaultOutputChannels = false;
         ms.inputChannels.setBit (s.micChannel);
         ms.sampleRate = s.sampleRate;
-        ms.bufferSize = 256;
+        ms.bufferSize = s.bufferSize;
         micDm.setCurrentAudioDeviceType (type->getTypeName(), false);
         auto merr = micDm.initialise (1, 0, nullptr, false, {}, &ms);   // input only
         auto* md = micDm.getCurrentAudioDevice();

@@ -3275,7 +3275,10 @@ void EmberAmpEditor::startStream (bool showProblems)
 
     const auto mainSetup = holder->deviceManager.getAudioDeviceSetup();
     if (auto* dev = holder->deviceManager.getCurrentAudioDevice())
+    {
         s.sampleRate = dev->getCurrentSampleRate();
+        s.bufferSize = dev->getCurrentBufferSizeSamples();   // never override the buffer you picked
+    }
     s.micChannel = settings != nullptr ? settings->getIntValue ("emberStreamMicCh", -1) : -1;
     s.micDevice = settings != nullptr ? settings->getValue ("emberStreamMicDevice") : juce::String();
     if (s.micDevice.isEmpty()) s.micDevice = mainSetup.inputDeviceName;   // older setting: an input on the interface
