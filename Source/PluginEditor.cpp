@@ -1739,6 +1739,7 @@ void CabPage::placeMicAt (juce::Point<float> p, bool mayChangeSpeaker)
     if (auto* prm = param ("micPos"))
         prm->setValueNotifyingHost (prm->convertTo0to1 (juce::jlimit (0.0f, 1.0f, d.getDistanceFromOrigin() / (speakerRadius() * 0.95f))));
     refresh();
+    repaint (cabView.expanded (30));   // at the edge only the angle changes (not a setting), so redraw here
 }
 
 juce::Point<float> CabPage::micPoint() const
@@ -1798,6 +1799,7 @@ void CabPage::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelD
             prm->endChangeGesture();
         }
         refresh();
+        repaint (cabView.expanded (30));
         return;
     }
     // up / down: closer or further (the drawn mic glides there, see timerCallback)
