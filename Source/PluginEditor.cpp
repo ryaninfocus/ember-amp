@@ -1725,9 +1725,10 @@ void CabPage::resized()
 void CabPage::placeMicAt (juce::Point<float> p, bool mayChangeSpeaker)
 {
     int best = mikedSpeaker();
-    if (mayChangeSpeaker)
+    // switch only for a click clearly inside another speaker's cone (not where two rims meet)
+    if (mayChangeSpeaker && p.getDistanceFrom (speakerCentreAt (best)) > speakerRadius())
         for (int i = 0; i < speakerCount(); ++i)
-            if (i != best && p.getDistanceFrom (speakerCentreAt (i)) < speakerRadius() * 1.05f)
+            if (i != best && p.getDistanceFrom (speakerCentreAt (i)) < speakerRadius() * 0.9f)
                 best = i;
     const auto c = speakerCentreAt (best);
     const auto d = p - c;
@@ -1755,7 +1756,9 @@ void CabPage::mouseDown (const juce::MouseEvent& e)
     dragging = true;
     for (auto* id : { "micPos", "micSpeaker" })
         if (auto* prm = param (id)) prm->beginChangeGesture();
-    placeMicAt (e.position, true);    // click a speaker: the mic goes there (and to that speaker)
+    // grabbing the mic itself only ever moves the mic; elsewhere, a click can pick another speaker
+    const bool onMic = e.position.getDistanceFrom (micPoint()) < speakerRadius() * 0.28f;
+    placeMicAt (e.position, ! onMic);
 }
 
 void CabPage::mouseDrag (const juce::MouseEvent& e)
@@ -2156,9 +2159,9 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
         if (auto* holder = juce::StandalonePluginHolder::getInstance())
         {
             auto& wrapperMute = holder->getMuteInputValue();
-            if ((bool) wrapperMute.getValue())
-                if (auto* param = p.apvts.getParameter ("inputMute"))
-                    param->setValueNotifyingHost (1.0f);
+            // the app always opens with the input muted: unmute when you're ready to play
+            if (auto* param = p.apvts.getParameter ("inputMute"))
+                param->setValueNotifyingHost (1.0f);
             wrapperMute.setValue (false);
 
             isStandalone = true;

@@ -12,6 +12,7 @@ No account or sign-in needed. Just download and install.
 - **CAB page:** a big view of the cabinet. Drag the mic anywhere on any speaker, scroll to move it closer or further (sideways scroll slides it across the cab), pick from 6 cabinets and 4 microphones.
 - **EQ page:** a 4-band semi-parametric post EQ with low and high cut, shown as a rack unit plus a curve you can drag.
 - **Doubler** (with Spread) and a **Stereo / Mono** switch in the top bar. Ember starts in Mono.
+- The app opens with the input muted: click INPUT MUTED when you are ready to play.
 - New top bar with icon tabs and preset buttons (save, delete, import, browse), and redesigned pedals.
 
 ## New in 1.3
