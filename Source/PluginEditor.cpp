@@ -1710,15 +1710,34 @@ public:
         sendBox.onChange = [this] { apply(); };
         addAndMakeVisible (sendBox);
 
-        // mic: another input on your interface
+        // mic: any microphone on the computer (built-in, headset, USB) or another input on your interface
         micBox.addItem ("Off - guitar only", 1);
-        int numIns = 0;
-        if (auto* dev = juce::StandalonePluginHolder::getInstance()->deviceManager.getCurrentAudioDevice())
-            numIns = dev->getInputChannelNames().size();
-        for (int ch = 0; ch < juce::jmin (numIns, 8); ++ch)
-            micBox.addItem ("Input " + juce::String (ch + 1) + " of your interface", ch + 2);
+        auto& mainDm = juce::StandalonePluginHolder::getInstance()->deviceManager;
+        const auto mainIn = mainDm.getAudioDeviceSetup().inputDeviceName;
+        int mainIns = 0;
+        if (auto* dev = mainDm.getCurrentAudioDevice())
+            mainIns = dev->getInputChannelNames().size();
+        for (auto& m : StreamOutput::listMics())
+        {
+            const bool isMain = m.device == mainIn;
+            const int n = isMain ? mainIns : m.numChannels;
+            for (int ch = 0; ch < juce::jmin (n, 8); ++ch)
+            {
+                juce::String label = m.device;
+                if (n > 1) label << " - input " << (ch + 1);
+                if (isMain) label << "  (your interface)";
+                mics.push_back ({ m.device, ch });
+                micBox.addItem (label, (int) mics.size() + 1);
+            }
+        }
         const int micCh = settings != nullptr ? settings->getIntValue ("emberStreamMicCh", -1) : -1;
-        micBox.setSelectedId (micCh >= 0 && micCh < numIns ? micCh + 2 : 1, juce::dontSendNotification);
+        auto micDev = settings != nullptr ? settings->getValue ("emberStreamMicDevice") : juce::String();
+        if (micDev.isEmpty()) micDev = mainIn;   // older setting: an input on the interface
+        int sel = 1;
+        for (size_t i = 0; i < mics.size(); ++i)
+            if (micCh >= 0 && mics[i].device == micDev && mics[i].channel == micCh)
+                sel = (int) i + 2;
+        micBox.setSelectedId (sel, juce::dontSendNotification);
         micBox.onChange = [this] { apply(); };
         addAndMakeVisible (micBox);
 
@@ -1812,7 +1831,10 @@ private:
             const int idx = sendBox.getSelectedId() - 1;
             if (juce::isPositiveAndBelow (idx, outputs.size()))
                 settings->setValue ("emberStreamDevice", outputs[idx]);
-            settings->setValue ("emberStreamMicCh", micBox.getSelectedId() - 2);
+            const int m = micBox.getSelectedId() - 2;
+            const bool on = juce::isPositiveAndBelow (m, (int) mics.size());
+            settings->setValue ("emberStreamMicDevice", on ? mics[(size_t) m].device : juce::String());
+            settings->setValue ("emberStreamMicCh", on ? mics[(size_t) m].channel : -1);
         }
         if (ed.streamWanted)
             ed.startStream (false);
@@ -1837,6 +1859,8 @@ private:
     juce::Slider guitarLevel, micLevel;
     juce::HyperlinkButton getCable;
     juce::StringArray outputs;
+    struct MicChoice { juce::String device; int channel; };
+    std::vector<MicChoice> mics;
     juce::Rectangle<int> meterArea;
     float outLevel = 0.0f, micLevelShown = 0.0f;
     int ticks = 0;
@@ -1848,7 +1872,11 @@ juce::String EmberAmpEditor::streamStatusText() const
    #if JucePlugin_Build_Standalone
     if (stream == nullptr) return {};
     if (stream->isRunning())
+    {
+        if (stream->getMicProblem().isNotEmpty())
+            return "Live: amp only. " + stream->getMicProblem();
         return "Live: sending to " + stream->getOutputName() + (stream->hasMic() ? " (amp + mic)" : " (amp)");
+    }
     if (streamError.isNotEmpty()) return streamError;
     if (StreamOutput::findVirtualCable().isEmpty())
        #if JUCE_MAC
@@ -1879,7 +1907,9 @@ void EmberAmpEditor::startStream (bool showProblems)
     if (auto* dev = holder->deviceManager.getCurrentAudioDevice())
         s.sampleRate = dev->getCurrentSampleRate();
     s.micChannel = settings != nullptr ? settings->getIntValue ("emberStreamMicCh", -1) : -1;
-    s.micDevice = s.micChannel >= 0 ? mainSetup.inputDeviceName : juce::String();
+    s.micDevice = settings != nullptr ? settings->getValue ("emberStreamMicDevice") : juce::String();
+    if (s.micDevice.isEmpty()) s.micDevice = mainSetup.inputDeviceName;   // older setting: an input on the interface
+    if (s.micChannel < 0) s.micDevice.clear();
 
     if (s.outputDevice.isEmpty())
     {

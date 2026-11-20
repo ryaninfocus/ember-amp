@@ -8,10 +8,14 @@
 
 No account or sign-in needed. Just download and install.
 
-## New in 1.1: Stream to Discord
+## New in 1.1.3
+- Stream: pick any mic on your computer, and your guitar and voice both go to Discord.
+- Transpose stays on (or off) when you switch presets.
+
+## Stream to Discord
 Play through Discord, OBS or Zoom without screen sharing. Turn on **STREAM** at the bottom of Ember Amp and it sends your amp sound (plus your mic, if you want) to a free virtual cable. Your own monitoring stays exactly as it was.
 1. Install the free cable: **BlackHole 2ch** (Mac, existential.audio/blackhole) or **VB-Audio Virtual Cable** (Windows, vb-audio.com/Cable).
-2. In Ember Amp, click **STREAM**, then **…** to choose a mic input and set the levels.
+2. In Ember Amp, click **STREAM**, then **…** and pick your mic (built-in, headset, USB or an interface input). Discord then gets your guitar and your voice together through the one cable.
 3. In Discord, open **Voice & Video**, set Input Device to the cable, and turn **off** Noise Suppression, Echo Cancellation and Automatic Gain Control.
 
 ## What you get

@@ -36,9 +36,37 @@ juce::String StreamOutput::findVirtualCable()
     return {};
 }
 
+static bool isLoopbackName (const juce::String& name)
+{
+    for (auto* key : { "BlackHole", "CABLE", "VB-Audio", "Loopback", "Soundflower", "Teams Audio", "ZoomAudio" })
+        if (name.containsIgnoreCase (key))
+            return true;
+    return false;
+}
+
+std::vector<StreamOutput::Mic> StreamOutput::listMics()
+{
+    std::vector<Mic> mics;
+    juce::AudioDeviceManager tmp;
+    if (auto* type = mainDeviceType (tmp))
+    {
+        type->scanForDevices();
+        for (auto& name : type->getDeviceNames (true))
+        {
+            if (isLoopbackName (name)) continue;
+            int n = 1;
+            if (std::unique_ptr<juce::AudioIODevice> dev { type->createDevice ({}, name) })
+                n = juce::jmax (1, dev->getInputChannelNames().size());
+            mics.push_back ({ name, n });
+        }
+    }
+    return mics;
+}
+
 juce::String StreamOutput::start (const Settings& s)
 {
     stop();
+    micProblem.clear();
     if (s.outputDevice.isEmpty())
         return "Choose where to send the sound.";
 
@@ -50,20 +78,10 @@ juce::String StreamOutput::start (const Settings& s)
     juce::AudioDeviceManager::AudioDeviceSetup setup;
     setup.outputDeviceName = s.outputDevice;
     setup.useDefaultOutputChannels = true;
+    setup.inputDeviceName = {};
+    setup.useDefaultInputChannels = false;
     setup.sampleRate = s.sampleRate;
     setup.bufferSize = 256;
-    micOpen = s.micDevice.isNotEmpty() && s.micChannel >= 0;
-    if (micOpen)
-    {
-        setup.inputDeviceName = s.micDevice;
-        setup.useDefaultInputChannels = false;
-        setup.inputChannels.setBit (s.micChannel);
-    }
-    else
-    {
-        setup.inputDeviceName = {};
-        setup.useDefaultInputChannels = false;
-    }
 
     auto err = dm.setAudioDeviceSetup (setup, false);
     if (err.isEmpty() && dm.getCurrentAudioDevice() == nullptr)
@@ -71,8 +89,41 @@ juce::String StreamOutput::start (const Settings& s)
     if (err.isNotEmpty())
     {
         dm.closeAudioDevice();
-        micOpen = false;
         return err;
+    }
+
+    // the mic: its own input-only device
+    if (s.micDevice.isNotEmpty() && s.micChannel >= 0)
+    {
+        juce::AudioDeviceManager::AudioDeviceSetup ms;
+        ms.inputDeviceName = s.micDevice;
+        ms.outputDeviceName = {};
+        ms.useDefaultInputChannels = false;
+        ms.useDefaultOutputChannels = false;
+        ms.inputChannels.setBit (s.micChannel);
+        ms.sampleRate = s.sampleRate;
+        ms.bufferSize = 256;
+        micDm.setCurrentAudioDeviceType (type->getTypeName(), false);
+        auto merr = micDm.initialise (1, 0, nullptr, false, {}, &ms);   // input only
+        auto* md = micDm.getCurrentAudioDevice();
+        if (merr.isEmpty() && (md == nullptr || md->getActiveInputChannels().countNumberOfSetBits() == 0))
+            merr = "no input";
+        if (merr.isEmpty() && std::abs (md->getCurrentSampleRate() - s.sampleRate) > 1.0)
+            merr = "wrong rate";
+        if (merr.isNotEmpty())
+        {
+            micDm.closeAudioDevice();
+            micProblem = "Couldn't open the mic " + s.micDevice + ".";
+        }
+        else
+        {
+            micIn.on = false;
+            micIn.fifo.reset();
+            micOpen = true;
+            micPriming = true;
+            micDm.addAudioCallback (&micIn);
+            micIn.on = true;
+        }
     }
 
     auto* dev = dm.getCurrentAudioDevice();
@@ -80,8 +131,7 @@ juce::String StreamOutput::start (const Settings& s)
     openedRate = dev->getCurrentSampleRate();
     if (std::abs (openedRate - s.sampleRate) > 1.0)
     {
-        dm.closeAudioDevice();
-        micOpen = false;
+        stop();
         return s.outputDevice + " can't run at " + juce::String (juce::roundToInt (s.sampleRate)) + " Hz like your interface.";
     }
 
@@ -101,6 +151,9 @@ void StreamOutput::stop()
     proc.streamTapOn = false;
     dm.removeAudioCallback (this);
     dm.closeAudioDevice();
+    micIn.on = false;
+    micDm.removeAudioCallback (&micIn);
+    micDm.closeAudioDevice();
     running = false;
     openedOutput.clear();
     micOpen = false;
@@ -113,7 +166,9 @@ void StreamOutput::audioDeviceAboutToStart (juce::AudioIODevice* dev)
     const int bs = juce::jmax (64, dev->getCurrentBufferSizeSamples());
     tmpL.assign ((size_t) bs + 4, 0.0f);
     tmpR.assign ((size_t) bs + 4, 0.0f);
+    tmpMic.assign ((size_t) bs + 4, 0.0f);
     target = 2 * bs + 512;                     // ~15 ms of cushion at 48 kHz
+    micTarget = target + 512;                  // the mic's block size may differ: a bit more cushion
     priming = true;
     micHp = 0.0f;
     micHpCoef = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 90.0f / (float) dev->getCurrentSampleRate());
@@ -170,8 +225,32 @@ void StreamOutput::audioDeviceIOCallbackWithContext (const float* const* in, int
         std::fill_n (tmpR.data(), numSamples, 0.0f);
     }
 
+    // the mic, same idea: keep its buffer near a small target
+    const float* mic = nullptr;
+    if (micOpen)
+    {
+        auto& mf = micIn.fifo;
+        int mAvail = mf.getNumReady();
+        if (mAvail > micTarget + 2048) { mf.finishedRead (mAvail - micTarget); mAvail = micTarget; }
+        int mWant = numSamples;
+        if (micPriming)                { if (mAvail >= micTarget) micPriming = false; mWant = 0; }
+        else if (mAvail < numSamples)  { micPriming = true; mWant = 0; }
+        else if (mAvail > micTarget + 256) mWant = numSamples + 1;
+        else if (mAvail < micTarget - 256) mWant = numSamples - 1;
+        if (mWant > 0)
+        {
+            const auto r = mf.read (mWant);
+            if (r.blockSize1 > 0) std::copy_n (micIn.buf.data() + r.startIndex1, r.blockSize1, tmpMic.data());
+            if (r.blockSize2 > 0) std::copy_n (micIn.buf.data() + r.startIndex2, r.blockSize2, tmpMic.data() + r.blockSize1);
+            if (mWant == numSamples - 1) tmpMic[(size_t) numSamples - 1] = tmpMic[(size_t) numSamples - 2];
+        }
+        else
+            std::fill_n (tmpMic.data(), numSamples, 0.0f);
+        mic = tmpMic.data();
+    }
+    juce::ignoreUnused (in, numIn);
+
     const float gg = guitarGain.load(), mg = micGain.load();
-    const float* mic = (micOpen && numIn > 0) ? in[0] : nullptr;
     float mPk = 0.0f, oPk = 0.0f;
     for (int i = 0; i < numSamples; ++i)
     {
@@ -194,4 +273,16 @@ void StreamOutput::audioDeviceIOCallbackWithContext (const float* const* in, int
 
     micPeak = juce::jmax (mPk, micPeak.load());
     outPeak = juce::jmax (oPk, outPeak.load());
+}
+
+void StreamOutput::MicIn::audioDeviceIOCallbackWithContext (const float* const* in, int numIn, float* const* out, int numOut,
+                                                           int numSamples, const juce::AudioIODeviceCallbackContext&)
+{
+    for (int c = 0; c < numOut; ++c)
+        if (out[c] != nullptr) juce::FloatVectorOperations::clear (out[c], numSamples);
+    if (! on.load() || numIn <= 0 || in[0] == nullptr) return;
+    const int n = juce::jmin (numSamples, fifo.getFreeSpace());   // if nobody reads, just drop
+    const auto w = fifo.write (n);
+    if (w.blockSize1 > 0) std::copy_n (in[0], w.blockSize1, buf.data() + w.startIndex1);
+    if (w.blockSize2 > 0) std::copy_n (in[0] + w.blockSize1, w.blockSize2, buf.data() + w.startIndex2);
 }
