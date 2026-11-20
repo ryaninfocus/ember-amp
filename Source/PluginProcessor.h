@@ -191,7 +191,7 @@ private:
     // factory preset, except the ones built on the pitch shifter (Drop C Chug, Octave Doom, Harmony Fifth).
     void parameterChanged (const juce::String& id, float value) override;
     std::atomic<bool> userPitchOn { false }, applyingPreset { false }, onPitchPreset { false };
-    std::atomic<int> userPitch { -2 };
+    std::atomic<int> userPitch { -1 };
     std::atomic<float> userPitchMix { 1.0f };
 
     std::atomic<float>* pInput;  std::atomic<float>* pMaster; std::atomic<float>* pMute; std::atomic<float>* pAmp;

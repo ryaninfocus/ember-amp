@@ -24,6 +24,9 @@ static PopupMenu makeAppMenu()
 class EmberWindow final : public StandaloneFilterWindow
 {
 public:
+    // quit without keeping the current sound: every launch starts fresh, only saved presets last
+    void closeButtonPressed() override   { JUCEApplicationBase::quit(); }
+
     EmberWindow (const String& title, Colour bg, std::unique_ptr<StandalonePluginHolder> holder)
         : StandaloneFilterWindow (title, bg, std::move (holder))
     {
@@ -94,9 +97,6 @@ public:
     // Cmd+Q, the red button, Alt+F4, the X, or the Dock's Quit
     void systemRequestedQuit() override
     {
-        if (mainWindow != nullptr)
-            mainWindow->getPluginHolder()->savePluginState();
-
         if (ModalComponentManager::getInstance()->cancelAllModalComponents())
             Timer::callAfterDelay (100, [] { if (auto* app = JUCEApplicationBase::getInstance()) app->systemRequestedQuit(); });
         else
@@ -106,6 +106,10 @@ public:
 private:
     std::unique_ptr<StandalonePluginHolder> createPluginHolder()
     {
+        // forget the sound from last time (older versions kept it); audio device settings stay
+        if (auto* s = appProperties.getUserSettings())
+            s->removeValue ("filterState");
+
         return std::make_unique<StandalonePluginHolder> (appProperties.getUserSettings(), false, String{}, nullptr,
                                                          Array<StandalonePluginHolder::PluginInOuts>{}, false);
     }

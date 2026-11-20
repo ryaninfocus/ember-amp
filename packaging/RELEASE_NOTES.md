@@ -8,6 +8,10 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.1.5
+- Ember Amp starts fresh every time you open it. To keep a sound, use **SAVE AS...** to make your own preset. Your audio interface and Stream settings are still remembered.
+- Transpose starts at -1 semitone.
+
 ## New in 1.1.4
 - Ember Amp now has a normal Mac / Windows window: the red close button (or Cmd+Q / Alt+F4) quits, and Audio Settings is under **SETTINGS** at the bottom right (and in the Mac menu bar).
 

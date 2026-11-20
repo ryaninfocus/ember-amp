@@ -1197,7 +1197,7 @@ void EmberAmpEditor::saveStandaloneState (bool includeDevice)
     {
         if (includeDevice)
             holder->saveAudioDeviceState();
-        holder->savePluginState();
+        // the sound itself is NOT kept between launches: only saved presets are
         if (auto* file = dynamic_cast<juce::PropertiesFile*> (holder->settings.get()))
             file->saveIfNeeded();
     }

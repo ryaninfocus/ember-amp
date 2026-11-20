@@ -493,7 +493,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "dsTone", 1 }, "Distortion Tone", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, pct));
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "dsLevel", 1 }, "Distortion Level", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, pct));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "pitchOn", 1 }, "Pitch On", false));
-    p.push_back (std::make_unique<AudioParameterInt>   (ParameterID { "pitch", 1 }, "Pitch", -12, 12, -2,
+    p.push_back (std::make_unique<AudioParameterInt>   (ParameterID { "pitch", 1 }, "Pitch", -12, 12, -1,
                      AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int)
                      {
                          if (v == 0)   return String ("0 st");
@@ -1292,7 +1292,7 @@ void EmberAmpProcessor::setStateInformation (const void* data, int sizeInBytes)
             apvts.replaceState (state);
             applyingPreset = false;
             userPitchOn  = (bool) state.getProperty ("userPitchOn", false);   // older saves: Transpose starts off
-            userPitch    = (int) state.getProperty ("userPitch", -2);
+            userPitch    = (int) state.getProperty ("userPitch", -1);
             userPitchMix = (float) state.getProperty ("userPitchMix", 1.0f);
             onPitchPreset = currentUserPreset.isEmpty() && factory[currentProgram].pitchOn;
             restoreIRsFrom (state);
