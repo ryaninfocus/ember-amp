@@ -2286,12 +2286,25 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
             }
 
             bufferBox.setTooltip ("Audio buffer size - lower = less delay, higher = fewer dropouts");
+            // pick a common size from the list, or type any number: it snaps to the nearest size the device offers
+            bufferBox.setEditableText (true);
+            bufferBox.setTooltip ("Audio buffer size: pick one, or click and type any number (lower = less delay, higher = fewer dropouts)");
             bufferBox.onChange = [this]
             {
                 if (auto* dm = getStandaloneDeviceManager())
                 {
+                    auto* dev = dm->getCurrentAudioDevice();
+                    if (dev == nullptr) return;
+                    int wanted = bufferBox.getSelectedId();
+                    if (wanted <= 0)
+                        wanted = bufferBox.getText().retainCharacters ("0123456789").getIntValue();
+                    if (wanted <= 0) { lastDeviceKey.clear(); refreshLatencyUI(); return; }
+                    int best = dev->getCurrentBufferSizeSamples(), bestDiff = 1 << 30;
+                    for (int s : dev->getAvailableBufferSizes())
+                        if (std::abs (s - wanted) < bestDiff) { bestDiff = std::abs (s - wanted); best = s; }
+                    if (best == dev->getCurrentBufferSizeSamples()) { lastDeviceKey.clear(); refreshLatencyUI(); return; }
                     auto setup = dm->getAudioDeviceSetup();
-                    setup.bufferSize = bufferBox.getSelectedId();
+                    setup.bufferSize = best;
                     userChangedAudio = true;
                     dm->setAudioDeviceSetup (setup, true);
                     lastDeviceKey.clear();
@@ -2931,10 +2944,18 @@ void EmberAmpEditor::refreshLatencyUI()
         if (first >= 0 && first < 6) inputChannelBox.setSelectedId (first + 1, juce::dontSendNotification);
         else                          inputChannelBox.setText ("Input -", juce::dontSendNotification);
 
+        // a short list (the usual powers of two the device offers, plus whatever is in use now);
+        // any other size can be typed into the box
         bufferBox.clear (juce::dontSendNotification);
-        for (int s : dev->getAvailableBufferSizes())
-            if (s >= 16 && s <= 2048)
-                bufferBox.addItem (juce::String (s) + " smp", s);
+        const auto avail = dev->getAvailableBufferSizes();
+        juce::Array<int> shown;
+        for (int s : { 16, 32, 64, 128, 256, 512, 1024, 2048 })
+            if (avail.contains (s)) shown.add (s);
+        if (! shown.contains (bs)) shown.add (bs);
+        if (shown.isEmpty()) for (int s : avail) if (s >= 16 && s <= 2048) shown.add (s);
+        shown.sort();
+        for (int s : shown)
+            bufferBox.addItem (juce::String (s) + " smp", s);
         bufferBox.setSelectedId (bs, juce::dontSendNotification);
     }
 
