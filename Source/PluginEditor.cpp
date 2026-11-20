@@ -1335,7 +1335,7 @@ void PedalsPage::resized()
         }
         return row.getCentreX() - total / 2;
     };
-    place (row1, { &gatePedal, &compPedal, &odPedal, &dsPedal, &pitchPedal }, 0);
+    place (row1, { &pitchPedal, &gatePedal, &compPedal, &odPedal, &dsPedal }, 0);   // signal order
     const int slotW = 120;
     const int left = place (row2, { &chorusPedal, &delayPedal, &reverbPedal }, slotW + gap);
     ampSlot = juce::Rectangle<int> (left, row2.getY(), slotW, pedalH).withSizeKeepingCentre (slotW, 120);
@@ -1885,6 +1885,7 @@ void EqPage::refresh()
             for (auto* k : *ks)
             {
                 k->getSlider().getProperties().set ("arc", true);
+                k->getSlider().setMouseDragSensitivity (400);   // a long throw: fine, fluid control over a wide range
                 k->getSlider().getProperties().set ("bipolar", ks == &gainKnobs);
                 k->getSlider().getProperties().set ("fromEnd", k == topKnobs.getLast());   // high cut: fills in from the top end
                 setAccent (k->getSlider(), EmberAmpEditor::ampAccent (a));
@@ -1911,8 +1912,10 @@ void EqPage::paint (juce::Graphics& g)
     const bool on = power.getToggleState();
     const auto accent = EmberAmpEditor::ampAccent (amp);
 
-    // ---- response curve
+    // ---- response curve (skipped when only a knob below needs redrawing)
     const auto ca = curveArea.toFloat();
+    if (g.clipRegionIntersects (curveArea.expanded (4)))
+    {
     g.setColour (Colour (0xff0b0c10).withAlpha (0.8f));
     g.fillRoundedRectangle (ca, 10.0f);
     g.setColour (Colours::white.withAlpha (0.08f));
@@ -1984,6 +1987,8 @@ void EqPage::paint (juce::Graphics& g)
         g.setColour (Palette::muted);
         g.setFont (spaced (11.0f, true, 0.25f));
         g.drawText ("EQ OFF", ca.reduced (14.0f, 8.0f), Justification::topRight);
+    }
+
     }
 
     // ---- the rack unit: sculpted like the amps, colour follows the live amp

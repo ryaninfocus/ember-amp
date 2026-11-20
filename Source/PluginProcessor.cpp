@@ -563,7 +563,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
         auto hz = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                   { return v >= 1000.0f ? String (v / 1000.0f, v >= 10000.0f ? 1 : 2) + " kHz" : String (roundToInt (v)) + " Hz"; });
         auto gdb = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return (v > 0.05f ? "+" : "") + String (v, 1) + " dB"; });
-        auto logRange = [] (float lo, float hi, float centre) { NormalisableRange<float> r (lo, hi, 1.0f); r.setSkewForCentre (centre); return r; };
+        // continuous (no 1 Hz steps): over 20 Hz - 20 kHz, whole-Hz steps made the knobs notchy at the low end
+        auto logRange = [] (float lo, float hi, float centre) { NormalisableRange<float> r (lo, hi, 0.0f); r.setSkewForCentre (centre); return r; };
         p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "eqOn", 1 }, "EQ On", false));
         // low and high cut: off when parked at the ends, on as soon as they're moved in
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqLowCut", 1 }, "Low Cut", logRange (20.0f, 20000.0f, 632.0f), 20.0f,
@@ -578,7 +579,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
             const float lo = EmberAmpProcessor::eqBandMinHz[b], hi = EmberAmpProcessor::eqBandMaxHz[b], def = EmberAmpProcessor::eqBandDefHz[b];
             p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqFreq" + num, 1 }, "EQ Band " + num + " Freq", logRange (lo, hi, 632.0f), def, hz));
             p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqGain" + num, 1 }, "EQ Band " + num + " Gain",
-                                                                NormalisableRange<float> (-EmberAmpProcessor::eqMaxGainDb, EmberAmpProcessor::eqMaxGainDb, 0.1f), 0.0f, gdb));
+                                                                NormalisableRange<float> (-EmberAmpProcessor::eqMaxGainDb, EmberAmpProcessor::eqMaxGainDb, 0.0f), 0.0f, gdb));
         }
     }
 
@@ -1109,7 +1110,29 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
     inputPeak = juce::jmax (inPk, inputPeak.load());
 
-    // ===== Pedals before the amp: Gate -> Compressor -> Pitch -> (Overdrive, inside the preamp) =====
+    // ===== Pedals before the amp: Pitch -> Gate -> Compressor -> (Overdrive, inside the preamp) =====
+
+    // --- Pitch shifter: first in the chain (and before the amp, so drop-tuned riffs distort like a real low string) ---
+    {
+        const int semis = juce::roundToInt (pPitch->load());
+        const bool on = pPitchOn->load() > 0.5f && semis != 0;
+        pitchWet.setTargetValue (on ? pPitchMix->load() : 0.0f);
+        pitchRatio.setTargetValue (std::pow (2.0f, (float) semis / 12.0f));
+
+        if (pitchWet.isSmoothing() || pitchWet.getTargetValue() > 0.0f)
+        {
+            for (int i = 0; i < n; ++i)
+            {
+                const float wet = pitchWet.getNextValue();
+                const float shifted = pitchShifter.process (x[i], pitchRatio.getNextValue());
+                x[i] += wet * (shifted - x[i]);
+            }
+        }
+        else
+        {
+            pitchRatio.skip (n);
+        }
+    }
 
     // --- Noise gate ---
     if (pGateOn->load() > 0.5f)
@@ -1133,28 +1156,6 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (sus > 0.001f || sustainMakeup.isSmoothing())
         for (int i = 0; i < n; ++i)
             x[i] *= sustainMakeup.getNextValue();
-
-    // --- Pitch shifter (before the amp, so drop-tuned riffs distort like a real low string) ---
-    {
-        const int semis = juce::roundToInt (pPitch->load());
-        const bool on = pPitchOn->load() > 0.5f && semis != 0;
-        pitchWet.setTargetValue (on ? pPitchMix->load() : 0.0f);
-        pitchRatio.setTargetValue (std::pow (2.0f, (float) semis / 12.0f));
-
-        if (pitchWet.isSmoothing() || pitchWet.getTargetValue() > 0.0f)
-        {
-            for (int i = 0; i < n; ++i)
-            {
-                const float wet = pitchWet.getNextValue();
-                const float shifted = pitchShifter.process (x[i], pitchRatio.getNextValue());
-                x[i] += wet * (shifted - x[i]);
-            }
-        }
-        else
-        {
-            pitchRatio.skip (n);
-        }
-    }
 
     // ===== Amp =====
     // the amp's own Sustain knob: compression in front of its preamp so notes ring longer
