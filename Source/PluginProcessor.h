@@ -257,6 +257,8 @@ private:
     Biquad eqLowCut, eqLowCut2, eqHighCut, eqHighCut2, eqBand[4];   // cuts are 24 dB/oct (two stages each)
     juce::SmoothedValue<float> lowCutWet, highCutWet;
     float eqLast[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+    float eqCur[10]  = {};    // what the filters are set to right now: glides toward the knobs (no zipper / crackle)
+    void setEqCoefficients (const float* v);
     juce::SmoothedValue<float> eqWet;
 
     // doubler: a delayed, slowly detuned copy of the amp on the right side
@@ -268,6 +270,8 @@ private:
 public:
     /** Response of the post EQ at a frequency, in dB (for the EQ page's curve). Message thread. */
     float getEqResponseDb (double hz) const;
+    /** The same, for many frequencies at once (builds the filters once: fast enough to redraw while dragging). */
+    void getEqResponseCurve (const double* hz, float* dbOut, int num) const;
     /** The cuts are off when parked at the ends (20 Hz / the top of the range), on once dragged in. */
     bool lowCutEngaged() const;
     bool highCutEngaged() const;

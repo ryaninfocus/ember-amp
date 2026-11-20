@@ -889,15 +889,10 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
 }
 
 // post EQ: band 1 is a low shelf, 2 and 3 are bells, 4 is a high shelf (semi-parametric: frequency + gain)
-void EmberAmpProcessor::updateEq (bool force)
+void EmberAmpProcessor::setEqCoefficients (const float* v)
 {
     const auto sr = getSampleRate() > 0 ? (float) getSampleRate() : 44100.0f;
-    const float v[10] = { pEqLowCut->load(), pEqHighCut->load(), pEqFreq[0]->load(), pEqGain[0]->load(), pEqFreq[1]->load(), pEqGain[1]->load(),
-                          pEqFreq[2]->load(), pEqGain[2]->load(), pEqFreq[3]->load(), pEqGain[3]->load() };
-    bool changed = force;
-    for (int i = 0; i < 10; ++i) if (v[i] != eqLast[i]) { changed = true; eqLast[i] = v[i]; }
-    if (! changed) return;
-    // 4th-order Butterworth: two stages with Q 0.54 and 1.31 (24 dB per octave)
+    // 4th-order Butterworth cuts: two stages with Q 0.54 and 1.31 (24 dB per octave)
     eqLowCut.set   (Coeffs::makeHighPass (sr, juce::jmin (v[0], 0.45f * sr), 0.5412f));
     eqLowCut2.set  (Coeffs::makeHighPass (sr, juce::jmin (v[0], 0.45f * sr), 1.3066f));
     eqHighCut.set  (Coeffs::makeLowPass  (sr, juce::jmin (v[1], 0.45f * sr), 0.5412f));
@@ -906,6 +901,38 @@ void EmberAmpProcessor::updateEq (bool force)
     eqBand[1].set (Coeffs::makePeakFilter (sr, juce::jmin (v[4], 0.45f * sr), 0.9f, dB (v[5])));
     eqBand[2].set (Coeffs::makePeakFilter (sr, juce::jmin (v[6], 0.45f * sr), 0.9f, dB (v[7])));
     eqBand[3].set (Coeffs::makeHighShelf  (sr, juce::jmin (v[8], 0.4f * sr), 0.7f, dB (v[9])));
+}
+
+// Called every 32 samples: the filters glide toward the knob settings over ~30 ms (frequencies glide
+// on a log scale, like your ear hears them), so dragging the EQ is smooth instead of steppy.
+void EmberAmpProcessor::updateEq (bool force)
+{
+    const float t[10] = { pEqLowCut->load(), pEqHighCut->load(), pEqFreq[0]->load(), pEqGain[0]->load(), pEqFreq[1]->load(), pEqGain[1]->load(),
+                          pEqFreq[2]->load(), pEqGain[2]->load(), pEqFreq[3]->load(), pEqGain[3]->load() };
+    static constexpr bool isFreq[10] = { true, true, true, false, true, false, true, false, true, false };
+    if (force)
+    {
+        for (int i = 0; i < 10; ++i) eqCur[i] = t[i];
+        setEqCoefficients (eqCur);
+        return;
+    }
+    const auto sr = getSampleRate() > 0 ? getSampleRate() : 44100.0;
+    const float k = 1.0f - (float) std::exp (-32.0 / (0.03 * sr));
+    bool moved = false;
+    for (int i = 0; i < 10; ++i)
+    {
+        if (eqCur[i] == t[i]) continue;
+        if (isFreq[i])
+        {
+            const float lc = std::log (juce::jmax (1.0f, eqCur[i])), lt = std::log (juce::jmax (1.0f, t[i]));
+            eqCur[i] = std::abs (lt - lc) < 0.0005f ? t[i] : std::exp (lc + (lt - lc) * k);
+        }
+        else
+            eqCur[i] = std::abs (t[i] - eqCur[i]) < 0.01f ? t[i] : eqCur[i] + (t[i] - eqCur[i]) * k;
+        moved = true;
+    }
+    if (moved)
+        setEqCoefficients (eqCur);
 }
 
 bool EmberAmpProcessor::lowCutEngaged() const   { return pEqLowCut->load() > 21.0f; }
@@ -917,29 +944,37 @@ bool EmberAmpProcessor::highCutEngaged() const
 
 float EmberAmpProcessor::getEqResponseDb (double hz) const
 {
+    float db = 0.0f;
+    getEqResponseCurve (&hz, &db, 1);
+    return db;
+}
+
+void EmberAmpProcessor::getEqResponseCurve (const double* hz, float* dbOut, int num) const
+{
     const double sr = getSampleRate() > 0 ? getSampleRate() : 48000.0;
-    const auto lc = pEqLowCut->load(), hc = pEqHighCut->load();
-    double mag = 1.0;
-    auto add = [&] (const std::array<float, 6>& c)
-    {
-        juce::dsp::IIR::Coefficients<float> co (c[0], c[1], c[2], c[3], c[4], c[5]);
-        mag *= co.getMagnitudeForFrequency (hz, sr);
-    };
+    const float fsr = (float) sr;
+    std::vector<juce::dsp::IIR::Coefficients<float>::Ptr> stages;
+    auto add = [&] (const std::array<float, 6>& c) { stages.push_back (new juce::dsp::IIR::Coefficients<float> (c[0], c[1], c[2], c[3], c[4], c[5])); };
     if (lowCutEngaged())
     {
-        const float f = juce::jmin (lc, 0.45f * (float) sr);
+        const float f = juce::jmin (pEqLowCut->load(), 0.45f * fsr);
         add (Coeffs::makeHighPass (sr, f, 0.5412f)); add (Coeffs::makeHighPass (sr, f, 1.3066f));
     }
     if (highCutEngaged())
     {
-        const float f = juce::jmin (hc, 0.45f * (float) sr);
+        const float f = juce::jmin (pEqHighCut->load(), 0.45f * fsr);
         add (Coeffs::makeLowPass (sr, f, 0.5412f)); add (Coeffs::makeLowPass (sr, f, 1.3066f));
     }
-    add (Coeffs::makeLowShelf   (sr, juce::jmin (pEqFreq[0]->load(), 0.4f * (float) sr), 0.7f, dB (pEqGain[0]->load())));
-    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[1]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[1]->load())));
-    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[2]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[2]->load())));
-    add (Coeffs::makeHighShelf  (sr, juce::jmin (pEqFreq[3]->load(), 0.4f * (float) sr), 0.7f, dB (pEqGain[3]->load())));
-    return juce::Decibels::gainToDecibels ((float) mag, -60.0f);
+    add (Coeffs::makeLowShelf   (sr, juce::jmin (pEqFreq[0]->load(), 0.4f * fsr), 0.7f, dB (pEqGain[0]->load())));
+    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[1]->load(), 0.45f * fsr), 0.9f, dB (pEqGain[1]->load())));
+    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[2]->load(), 0.45f * fsr), 0.9f, dB (pEqGain[2]->load())));
+    add (Coeffs::makeHighShelf  (sr, juce::jmin (pEqFreq[3]->load(), 0.4f * fsr), 0.7f, dB (pEqGain[3]->load())));
+    for (int k = 0; k < num; ++k)
+    {
+        double mag = 1.0;
+        for (auto& st : stages) mag *= st->getMagnitudeForFrequency (hz[k], sr);
+        dbOut[k] = juce::Decibels::gainToDecibels ((float) mag, -60.0f);
+    }
 }
 
 void EmberAmpProcessor::updateFilters (int amp)
@@ -1295,9 +1330,9 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     const bool bandsActive = eqWet.isSmoothing() || eqWet.getTargetValue() > 0.0f;
     if (lcActive || hcActive || bandsActive)
     {
-        updateEq (false);
         for (int i = 0; i < n; ++i)
         {
+            if ((i & 31) == 0) updateEq (false);   // glide the filter settings every 32 samples
             float y = x[i];
             if (lcActive)
             {

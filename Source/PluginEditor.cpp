@@ -397,6 +397,20 @@ void EmberLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
             g.fillEllipse (Rectangle<float> (d, d).withCentre ({ c.x + rr * std::sin (a), c.y - rr * std::cos (a) }));
         }
 
+        // optional value arc (EQ page): shows the setting at a glance even over a wide range
+        if ((bool) s.getProperties()["arc"])
+        {
+            const float ar = radius * 0.97f;
+            Path track; track.addCentredArc (c.x, c.y, ar, ar, 0.0f, startAngle, endAngle, true);
+            g.setColour (ink.withAlpha (0.15f));
+            g.strokePath (track, PathStrokeType (2.2f, PathStrokeType::curved, PathStrokeType::rounded));
+            const bool bipolar = (bool) s.getProperties()["bipolar"];
+            const float from = bipolar ? (startAngle + endAngle) * 0.5f : (bool) s.getProperties()["fromEnd"] ? endAngle : startAngle;
+            Path val; val.addCentredArc (c.x, c.y, ar, ar, 0.0f, jmin (from, angle), jmax (from, angle), true);
+            g.setColour (accent);
+            g.strokePath (val, PathStrokeType (2.6f, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+
         // contact shadow, then the body (lit from above)
         g.setGradientFill (ColourGradient (Colours::black.withAlpha (lightPanel ? 0.35f : 0.6f), c.x, c.y + kr * 0.5f,
                                            Colours::transparentBlack, c.x, c.y + kr * 1.6f, true));
@@ -1870,6 +1884,10 @@ void EqPage::refresh()
         for (auto* ks : { &topKnobs, &gainKnobs })
             for (auto* k : *ks)
             {
+                k->getSlider().getProperties().set ("arc", true);
+                k->getSlider().getProperties().set ("bipolar", ks == &gainKnobs);
+                k->getSlider().getProperties().set ("fromEnd", k == topKnobs.getLast());   // high cut: fills in from the top end
+                setAccent (k->getSlider(), EmberAmpEditor::ampAccent (a));
                 k->getSlider().getProperties().set ("lightPanel", light);
                 k->getSlider().getProperties().set ("knobLight", ! light ? juce::var (false) : juce::var (true));
                 k->getSlider().setColour (juce::Slider::textBoxTextColourId, ink);
@@ -1919,10 +1937,13 @@ void EqPage::paint (juce::Graphics& g)
         g.drawText ((db > 0 ? "+" : "") + String ((int) db), Rectangle<float> (30.0f, 12.0f).withPosition (ca.getX() + 6.0f, yFor (db) - 6.0f), Justification::centredLeft);
     }
     Path curve, fill;
+    double hzs[241]; float dbs[241];
+    for (int i = 0; i <= 240; ++i) hzs[i] = 20.0 * std::pow (maxHz / 20.0, (double) i / 240.0);
+    proc.getEqResponseCurve (hzs, dbs, 241);
     for (int i = 0; i <= 240; ++i)
     {
-        const double hz = 20.0 * std::pow (maxHz / 20.0, (double) i / 240.0);
-        const float x = xFor (hz), y = yFor (proc.getEqResponseDb (hz));
+        const double hz = hzs[i];
+        const float x = xFor (hz), y = yFor (dbs[i]);
         if (i == 0) { curve.startNewSubPath (x, y); fill.startNewSubPath (x, yFor (0.0f)); fill.lineTo (x, y); }
         else        { curve.lineTo (x, y); fill.lineTo (x, y); }
     }
@@ -2025,8 +2046,9 @@ juce::Point<float> EqPage::handleFor (int b) const
 {
     if (b >= 4)
     {
-        const float hz = proc.apvts.getRawParameterValue (b == 4 ? "eqLowCut" : "eqHighCut")->load();
-        return { xForHz (juce::jlimit (20.0, topHz(), (double) hz)), yForDb (-15.0f) };
+        // on the curve, at the cut's corner (-3 dB); parked at the end of the line while off
+        const double hz = juce::jlimit (20.0, topHz(), (double) proc.apvts.getRawParameterValue (b == 4 ? "eqLowCut" : "eqHighCut")->load());
+        return { xForHz (hz), yForDb (proc.getEqResponseDb (hz)) };
     }
     const auto n = juce::String (b + 1);
     return { xForHz (proc.apvts.getRawParameterValue ("eqFreq" + n)->load()), yForDb (proc.apvts.getRawParameterValue ("eqGain" + n)->load()) };

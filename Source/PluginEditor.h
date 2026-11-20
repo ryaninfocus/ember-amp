@@ -233,6 +233,7 @@ public:
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseDoubleClick (const juce::MouseEvent&) override;
+    juce::Point<float> getHandleForTest (int b) const { return handleFor (b); }
 private:
     float lastSig = 0.0f;
     bool shownOn = false;
