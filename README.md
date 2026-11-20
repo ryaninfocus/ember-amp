@@ -22,6 +22,7 @@ The first time you open it, your computer will ask once, because Ember Amp isn't
   - **Distortion:** Prog Metal Rhythm, Djent Tight, Drop C Chug, Octave Doom, Texas Special
   - **Solo:** Singing Lead, Shred, Liquid Legato, Harmony Fifth, Texas Scoop Lead
 - **8 pedals:** gate, compressor, overdrive, distortion, pitch shifter, chorus, delay and reverb.
+- **Post EQ, doubler, stereo or mono output.**
 - **Stream to Discord:** the STREAM switch sends the amp (plus your mic) to a free virtual cable (BlackHole on Mac, VB-Audio Cable on Windows), so you can play in Discord, OBS or Zoom without sharing your screen.
 - **Cabs and mics:** 6 cabinets, 4 microphones, mic position and distance on every amp; each preset has its own setup.
 - **Other features:** a tuner, IR loading (drag a .wav onto the window), saving your own presets, an optional Dynamics switch, and loudness-matched presets.

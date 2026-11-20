@@ -8,6 +8,12 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.4
+- **CAB page:** a big view of the cabinet. Drag the mic anywhere on any speaker, scroll to move it closer or further (sideways scroll slides it across the cab), pick from 6 cabinets and 4 microphones.
+- **EQ page:** a 4-band semi-parametric post EQ with low and high cut, shown as a rack unit plus a curve you can drag.
+- **Doubler** (with Spread) and a **Stereo / Mono** switch in the top bar. Ember starts in Mono.
+- New top bar with icon tabs and preset buttons (save, delete, import, browse), and redesigned pedals.
+
 ## New in 1.3
 - **Cabs and mics:** every amp can use any of 6 cabinets and 4 microphones, with mic **Position** (centre of the speaker to the edge) and **Distance** (close to 30 cm). Each of the 20 presets has its own setup, and volumes are re-matched.
 - **New look:** sculpted amps with a glowing core and engraved circuit lines, on a night-sky background.

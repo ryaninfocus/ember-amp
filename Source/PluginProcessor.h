@@ -110,6 +110,7 @@ public:
     static juce::StringArray cabNames();                // every cab, selectable on every amp
     static juce::StringArray micNames();
     static int defaultCab (int amp);
+    static int speakersInCab (int cab)  { return cab == 0 ? 1 : cab <= 2 ? 2 : 4; }
     static juce::String ampParamID (int amp, const char* knob)  { return "a" + juce::String (amp) + "_" + knob; }
 
     EmberAmpProcessor();
@@ -185,7 +186,8 @@ private:
                       std::atomic<float>* treble; std::atomic<float>* presence; std::atomic<float>* volume;
                       std::atomic<float>* cab; std::atomic<float>* sustain;
                       std::atomic<float>* drive;     // drive: Crunch, Distortion, Solo (nullptr on Clean)
-                      std::atomic<float>* cabModel; std::atomic<float>* mic; std::atomic<float>* micPos; std::atomic<float>* micDist; };
+                      std::atomic<float>* cabModel; std::atomic<float>* mic; std::atomic<float>* micPos; std::atomic<float>* micDist;
+                      std::atomic<float>* micSpeaker; };
 
     void updateFilters (int amp);
     void setAmpVoicing (int amp);
@@ -207,6 +209,9 @@ private:
     std::atomic<float>* pDsOn;   std::atomic<float>* pDsDist; std::atomic<float>* pDsTone; std::atomic<float>* pDsLevel;
     std::atomic<float>* pPitchOn; std::atomic<float>* pPitch; std::atomic<float>* pPitchMix;
     std::atomic<float>* pDelayOn; std::atomic<float>* pDTime; std::atomic<float>* pDFb; std::atomic<float>* pDMix;
+    std::atomic<float>* pEqOn; std::atomic<float>* pEqLowCut; std::atomic<float>* pEqHighCut;
+    std::atomic<float>* pDoublerOn; std::atomic<float>* pDoublerSpread; std::atomic<float>* pMonoOut;
+    std::atomic<float>* pEqFreq[4]; std::atomic<float>* pEqGain[4];
     std::atomic<float>* pChorusOn; std::atomic<float>* pCRate; std::atomic<float>* pCDepth; std::atomic<float>* pCMix;
     std::atomic<float>* pRevOn;  std::atomic<float>* pRSize; std::atomic<float>* pRMix;
     AmpKnobs knobs[numAmps];
@@ -240,11 +245,32 @@ private:
     Biquad cabHp, cabLowRes, cabScoop, cabComb, cabBite, cabLp1, cabLp2; // per-amp built-in cab
     Biquad depth;                                 // post-cab low resonance
     Biquad micA, micB, micPosShelf, micDistLow, micDistHigh;   // the mic: its type, where it points, how far back
+    Biquad micSpkLow, micSpkPeak;                              // which speaker in the cab is miked
+    float lastMicSpeaker = -1.0f;
     std::vector<float> reflBuf = std::vector<float> (2048, 0.0f);   // far mic: a short reflection off the floor/room
     int reflPos = 0;
     float reflGain = 0.0f, reflDelay = 0.0f;
     float lastCabModel = -1.0f, lastMic = -1.0f, lastMicPos = -1.0f, lastMicDist = -1.0f;
     void updateCabMic (int amp, bool force);
+
+    // post EQ (after the amp and cab): low cut, 4 semi-parametric bands, high cut
+    Biquad eqLowCut, eqHighCut, eqBand[4];
+    float eqLast[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+    juce::SmoothedValue<float> eqWet;
+
+    // doubler: a delayed, slowly detuned copy of the amp on the right side
+    std::vector<float> dblBuf;
+    int dblMask = 0, dblPos = 0;
+    float dblPhase = 0.0f;
+    juce::SmoothedValue<float> dblWet, dblDelay, monoAmount;
+    void updateEq (bool force);
+public:
+    /** Response of the post EQ at a frequency, in dB (for the EQ page's curve). Message thread. */
+    float getEqResponseDb (double hz) const;
+    static constexpr float eqBandMinHz[4] = { 40.0f, 150.0f, 600.0f, 2000.0f };
+    static constexpr float eqBandMaxHz[4] = { 500.0f, 2000.0f, 6000.0f, 12000.0f };
+    static constexpr float eqBandDefHz[4] = { 100.0f, 500.0f, 2000.0f, 6000.0f };
+private:
 
     std::array<juce::dsp::Convolution, numAmps> irConvolution;
     std::array<juce::File, numAmps> irFile;

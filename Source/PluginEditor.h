@@ -43,6 +43,8 @@ public:
     Knob (juce::AudioProcessorValueTreeState&, const juce::String& paramId, const juce::String& title,
           juce::Colour accent, const juce::String& style, juce::Colour textColour, float titleSize = 12.0f);
     void resized() override;
+    juce::Slider& getSlider() { return slider; }
+    juce::Label& getLabel()   { return label; }
 
 private:
     juce::Slider slider;
@@ -104,14 +106,9 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
     juce::Image logo;
 
-    // cab and mic: model menus, position / distance knobs, and a little speaker showing where the mic is
-    juce::ComboBox cabBox, micBox;
-    juce::Label cabTitle, micTitle;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> cabBoxAtt, micBoxAtt;
-    std::unique_ptr<Knob> posKnob, distKnob;
-    juce::Rectangle<int> speakerArea;
-    float shownPos = -1.0f, shownDist = -1.0f;
-    bool shownIR = false;
+    // cab + mic summary, and a link to the CAB page where they are edited
+    juce::Label cabSummary;
+    juce::TextButton editCabButton { "EDIT CAB" };
 
     juce::Rectangle<int> head, grille, panel, cabTop;
     bool shownActive = false, shownCab = true;
@@ -135,6 +132,7 @@ private:
     juce::TextButton footswitch;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> footAttachment;
     bool shownOn = false;
+    juce::Rectangle<float> nameArea;
 };
 
 /** The pedalboard page: 5 pedals before the amp, 3 after. */
@@ -151,6 +149,90 @@ private:
     PedalUnit gatePedal, compPedal, odPedal, dsPedal, pitchPedal, chorusPedal, delayPedal, reverbPedal;
     juce::Rectangle<int> ampSlot;
     int shownAmp = -1;
+};
+
+//==============================================================================
+/** The CAB page: the live amp's cabinet, microphone, and where the mic sits (drag it on the speaker). */
+class CabPage : public juce::Component, private juce::Timer
+{
+public:
+    CabPage (EmberAmpEditor&, EmberAmpProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void refresh();
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+
+private:
+    void bindToAmp (int amp);
+    void setParam (const char* id, float value);
+    juce::RangedAudioParameter* param (const char* id) const;
+    float value (const char* id) const;
+    juce::Point<float> speakerCentre() const;           // the miked speaker
+    juce::Point<float> speakerCentreAt (int index) const;
+    float speakerRadius() const;
+    int speakerCount() const;
+    int mikedSpeaker() const;                           // 0-based
+    void timerCallback() override;                      // glides the drawn mic toward its settings
+    void placeMicAt (juce::Point<float>);               // nearest speaker, at that distance from its centre
+    juce::Point<float> micPoint() const;
+
+    EmberAmpEditor& ed;
+    EmberAmpProcessor& proc;
+    int amp = -1;
+
+    juce::Label title, cabTitle, micTitle, irTitle, hint;
+    juce::OwnedArray<juce::TextButton> cabButtons, micButtons;
+    std::unique_ptr<Knob> posKnob, distKnob;
+    juce::ToggleButton cabOn { "CAB" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> cabOnAtt;
+    juce::Label irLabel;
+    juce::TextButton loadIRButton { "LOAD IR" }, clearIRButton { "CLEAR" };
+
+    juce::Rectangle<int> cabView, side;
+    float micAngle = 0.0f;              // where around the cone the mic was dragged (only for drawing)
+    float animPos = -1.0f, animDist = -1.0f;   // what's drawn: eases toward the real values
+    juce::Point<float> animCentre;
+    float shownSpk = -1.0f;
+    bool dragging = false;
+    float shownCab = -1.0f, shownMic = -1.0f, shownPos = -1.0f, shownDist = -1.0f;
+    bool shownIR = false, shownOn = true;
+};
+
+//==============================================================================
+/** The EQ page: a 4-band semi-parametric post EQ (plus low / high cut) as a rack unit, with its curve above. */
+class EqPage : public juce::Component
+{
+public:
+    EqPage (EmberAmpProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void refresh();
+
+private:
+    EmberAmpProcessor& proc;
+    juce::OwnedArray<Knob> topKnobs;     // low cut, freq 1..4, high cut
+    juce::OwnedArray<Knob> gainKnobs;    // gain 1..4
+    juce::ToggleButton power { "EQ" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> powerAtt;
+    juce::Rectangle<int> curveArea, unit, face;
+    juce::Rectangle<float> plot;      // the graph inside curveArea
+    int amp = -1, dragBand = -1;
+    float xForHz (double hz) const;
+    double hzForX (float x) const;
+    float yForDb (float db) const;
+    float dbForY (float y) const;
+    juce::Point<float> handleFor (int band) const;
+public:
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+    void mouseDoubleClick (const juce::MouseEvent&) override;
+private:
+    float lastSig = 0.0f;
+    bool shownOn = false;
 };
 
 //==============================================================================
@@ -173,7 +255,10 @@ public:
     void filesDropped (const juce::StringArray& files, int, int) override;
     bool keyPressed (const juce::KeyPress&) override;
 
-    void showPage (int page);            // 0 = pedals, 1..4 = amps
+    void showPage (int page);            // 0 = pedals, 1..4 = amps, 5 = cab
+    static constexpr int cabPageIndex = 1 + EmberAmpProcessor::numAmps;
+    static constexpr int eqPageIndex  = 2 + EmberAmpProcessor::numAmps;
+    bool isAmpPage() const { return currentPage >= 1 && currentPage <= EmberAmpProcessor::numAmps; }
     void presetsChanged();               // a preset was loaded from somewhere
     static juce::Colour ampAccent (int amp);
 
@@ -186,7 +271,7 @@ private:
     EmberLookAndFeel lnf;
 
     // navigation
-    juce::TextButton tabs[1 + EmberAmpProcessor::numAmps];
+    juce::TextButton tabs[3 + EmberAmpProcessor::numAmps];   // pedals, the amps, cab, eq
 
     // top control strip
     LevelMeter inMeter, outMeter;
@@ -194,6 +279,14 @@ private:
     juce::ToggleButton gateSwitch { "GATE" }, transposeSwitch { "TRANSPOSE" }, dynamicsSwitch { "DYNAMICS" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> gateSwitchAtt, transposeSwitchAtt, dynamicsAtt;
     juce::TextButton prevPreset, nextPreset;
+    juce::TextButton presetDeleteIcon, presetImportIcon, presetSearchIcon;   // savePresetButton is the save icon
+    juce::ToggleButton monoSwitch { "MODE" }, doublerSwitch { "DOUBLER" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> monoAtt, doublerAtt;
+    std::unique_ptr<Knob> spreadKnob;
+    std::unique_ptr<juce::FileChooser> importChooser;
+    juce::Rectangle<int> modeHead, doublerHead, presetsHead, dynamicsHead;
+    void deleteCurrentPreset();
+    void importPreset();
     juce::TextButton savePresetButton { "SAVE AS..." };
     juce::ComboBox presetBox;
     juce::Array<juce::File> userPresetFiles;
@@ -236,6 +329,9 @@ private:
     // pages
     PedalsPage pedalsPage;
     std::unique_ptr<AmpPage> ampPages[EmberAmpProcessor::numAmps];
+    std::unique_ptr<CabPage> cabPage;
+    std::unique_ptr<EqPage> eqPage;
+    friend class CabPage;
     int currentPage = 1, lastSelectedAmp = -1, lastProgramShown = -1;
     juce::String lastUserPresetShown;
     juce::Rectangle<int> stageArea, statusArea;

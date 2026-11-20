@@ -217,6 +217,91 @@ static void fillBrushed (juce::Graphics& g, juce::Rectangle<float> r, juce::Colo
     g.restoreState();
 }
 
+// Line icons for the tabs and preset buttons
+static void drawIcon (juce::Graphics& g, const juce::String& name, juce::Rectangle<float> r, juce::Colour c)
+{
+    using namespace juce;
+    const float s = jmin (r.getWidth(), r.getHeight());
+    auto b = Rectangle<float> (s, s).withCentre (r.getCentre());
+    const float w = jmax (1.4f, s * 0.075f);
+    g.setColour (c);
+    auto stroke = [&] (const Path& p) { g.strokePath (p, PathStrokeType (w, PathStrokeType::curved, PathStrokeType::rounded)); };
+    if (name == "pedal")
+    {
+        auto box = b.reduced (s * 0.22f, s * 0.06f);
+        g.drawRoundedRectangle (box, s * 0.08f, w);
+        g.drawEllipse (Rectangle<float> (s * 0.16f, s * 0.16f).withCentre ({ box.getX() + box.getWidth() * 0.3f, box.getY() + s * 0.2f }), w * 0.8f);
+        g.drawEllipse (Rectangle<float> (s * 0.16f, s * 0.16f).withCentre ({ box.getRight() - box.getWidth() * 0.3f, box.getY() + s * 0.2f }), w * 0.8f);
+        g.drawEllipse (Rectangle<float> (s * 0.26f, s * 0.26f).withCentre ({ box.getCentreX(), box.getBottom() - s * 0.2f }), w);
+    }
+    else if (name == "amp")
+    {
+        auto box = b.reduced (s * 0.04f, s * 0.24f);
+        g.drawRoundedRectangle (box, s * 0.06f, w);
+        g.drawLine (box.getX(), box.getY() + box.getHeight() * 0.62f, box.getRight(), box.getY() + box.getHeight() * 0.62f, w * 0.8f);
+        for (int i = 0; i < 4; ++i)
+            g.fillEllipse (Rectangle<float> (w * 1.6f, w * 1.6f).withCentre ({ box.getX() + box.getWidth() * (0.25f + 0.17f * (float) i), box.getY() + box.getHeight() * 0.81f }));
+    }
+    else if (name == "cab")
+    {
+        auto box = b.reduced (s * 0.1f);
+        g.drawRoundedRectangle (box, s * 0.06f, w);
+        g.drawEllipse (box.reduced (s * 0.14f), w);
+        g.fillEllipse (Rectangle<float> (s * 0.16f, s * 0.16f).withCentre (box.getCentre()));
+    }
+    else if (name == "eq")
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            const float x = b.getX() + s * (0.25f + 0.25f * (float) i);
+            g.drawLine (x, b.getY() + s * 0.1f, x, b.getBottom() - s * 0.1f, w);
+            const float y = b.getY() + s * (i == 1 ? 0.62f : i == 0 ? 0.35f : 0.45f);
+            g.drawEllipse (Rectangle<float> (s * 0.17f, s * 0.17f).withCentre ({ x, y }), w);
+        }
+    }
+    else if (name == "save")
+    {
+        auto box = b.reduced (s * 0.14f);
+        Path p; p.startNewSubPath (box.getX(), box.getY()); p.lineTo (box.getRight() - s * 0.16f, box.getY()); p.lineTo (box.getRight(), box.getY() + s * 0.16f);
+        p.lineTo (box.getRight(), box.getBottom()); p.lineTo (box.getX(), box.getBottom()); p.closeSubPath();
+        stroke (p);
+        g.drawRect (Rectangle<float> (box.getWidth() * 0.5f, box.getHeight() * 0.28f).withPosition (box.getX() + box.getWidth() * 0.2f, box.getY()), w * 0.8f);
+        g.drawRect (Rectangle<float> (box.getWidth() * 0.6f, box.getHeight() * 0.32f).withPosition (box.getX() + box.getWidth() * 0.2f, box.getBottom() - box.getHeight() * 0.36f), w * 0.8f);
+    }
+    else if (name == "trash")
+    {
+        auto box = b.reduced (s * 0.2f, s * 0.12f);
+        g.drawLine (box.getX() - s * 0.05f, box.getY() + s * 0.1f, box.getRight() + s * 0.05f, box.getY() + s * 0.1f, w);
+        g.drawLine (box.getCentreX() - s * 0.08f, box.getY(), box.getCentreX() + s * 0.08f, box.getY(), w);
+        Path p; p.startNewSubPath (box.getX() + s * 0.04f, box.getY() + s * 0.18f); p.lineTo (box.getX() + s * 0.08f, box.getBottom());
+        p.lineTo (box.getRight() - s * 0.08f, box.getBottom()); p.lineTo (box.getRight() - s * 0.04f, box.getY() + s * 0.18f);
+        stroke (p);
+    }
+    else if (name == "import")
+    {
+        Path p; p.startNewSubPath (b.getCentreX() + s * 0.05f, b.getY() + s * 0.15f); p.lineTo (b.getRight() - s * 0.15f, b.getY() + s * 0.15f);
+        p.lineTo (b.getRight() - s * 0.15f, b.getBottom() - s * 0.15f); p.lineTo (b.getCentreX() + s * 0.05f, b.getBottom() - s * 0.15f);
+        stroke (p);
+        Path a; a.startNewSubPath (b.getX() + s * 0.12f, b.getCentreY()); a.lineTo (b.getCentreX() + s * 0.15f, b.getCentreY());
+        a.startNewSubPath (b.getCentreX(), b.getCentreY() - s * 0.14f); a.lineTo (b.getCentreX() + s * 0.15f, b.getCentreY()); a.lineTo (b.getCentreX(), b.getCentreY() + s * 0.14f);
+        stroke (a);
+    }
+    else if (name == "search")
+    {
+        const auto cc = b.getCentre().translated (-s * 0.07f, -s * 0.07f);
+        g.drawEllipse (Rectangle<float> (s * 0.48f, s * 0.48f).withCentre (cc), w);
+        g.drawLine (cc.x + s * 0.17f, cc.y + s * 0.17f, b.getRight() - s * 0.14f, b.getBottom() - s * 0.14f, w * 1.2f);
+    }
+    else if (name == "left" || name == "right")
+    {
+        const float dir = name == "left" ? -1.0f : 1.0f;
+        Path p; p.startNewSubPath (b.getCentreX() - dir * s * 0.12f, b.getCentreY() - s * 0.25f);
+        p.lineTo (b.getCentreX() + dir * s * 0.12f, b.getCentreY());
+        p.lineTo (b.getCentreX() - dir * s * 0.12f, b.getCentreY() + s * 0.25f);
+        stroke (p);
+    }
+}
+
 juce::Colour EmberAmpEditor::ampAccent (int amp)
 {
     static const juce::Colour cols[] = { juce::Colour (0xff4fd1c5),    // Clean: teal
@@ -299,6 +384,7 @@ void EmberLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
     {
         // sculpted knob: a soft matte cylinder, a small pointer, a fine dotted scale
         const bool lightPanel = (bool) s.getProperties()["lightPanel"];
+        const bool lightKnob = s.getProperties()["knobLight"].isVoid() ? lightPanel : (bool) s.getProperties()["knobLight"];
         const float kr = radius * 0.62f;
         const auto ink = lightPanel ? Colour (0xff3a3d43) : Colour (0xffd9dbdf);
 
@@ -315,22 +401,22 @@ void EmberLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
         g.setGradientFill (ColourGradient (Colours::black.withAlpha (lightPanel ? 0.35f : 0.6f), c.x, c.y + kr * 0.5f,
                                            Colours::transparentBlack, c.x, c.y + kr * 1.6f, true));
         g.fillEllipse (Rectangle<float> (kr * 2.6f, kr * 2.4f).withCentre (c.translated (0.0f, kr * 0.35f)));
-        const auto hi = lightPanel ? Colour (0xfffdfdfe) : Colour (0xff55585e);
-        const auto lo = lightPanel ? Colour (0xffbfc2c7) : Colour (0xff17181b);
+        const auto hi = lightKnob ? Colour (0xfffdfdfe) : Colour (0xff55585e);
+        const auto lo = lightKnob ? Colour (0xffbfc2c7) : Colour (0xff17181b);
         g.setGradientFill (ColourGradient (lo, c.x, c.y + kr, hi, c.x, c.y - kr, false));
         g.fillEllipse (Rectangle<float> (kr * 2.0f, kr * 2.0f).withCentre (c.translated (0.0f, 2.0f)));   // side wall
         g.setGradientFill (ColourGradient (hi, c.x - kr * 0.4f, c.y - kr, lo.interpolatedWith (hi, 0.45f), c.x + kr * 0.3f, c.y + kr, false));
         g.fillEllipse (Rectangle<float> (kr * 1.86f, kr * 1.86f).withCentre (c));                            // top face
-        g.setColour (Colours::white.withAlpha (lightPanel ? 0.9f : 0.18f));
+        g.setColour (Colours::white.withAlpha (lightKnob ? 0.9f : 0.18f));
         g.drawEllipse (Rectangle<float> (kr * 1.86f, kr * 1.86f).withCentre (c).reduced (0.6f), 0.8f);
-        g.setColour (Colours::black.withAlpha (lightPanel ? 0.18f : 0.6f));
+        g.setColour (Colours::black.withAlpha (lightKnob ? 0.18f : 0.6f));
         g.drawEllipse (Rectangle<float> (kr * 2.0f, kr * 2.0f).withCentre (c.translated (0.0f, 2.0f)), 0.8f);
 
         // pointer: a small dark wedge near the rim
         Path ptr;
         ptr.addTriangle (0.0f, -kr * 0.82f, -kr * 0.13f, -kr * 0.56f, kr * 0.13f, -kr * 0.56f);
         ptr.applyTransform (AffineTransform::rotation (angle).translated (c.x, c.y));
-        g.setColour (lightPanel ? Colour (0xff1b1c20) : Colours::white.withAlpha (0.95f));
+        g.setColour (lightKnob ? Colour (0xff1b1c20) : Colours::white.withAlpha (0.95f));
         g.fillPath (ptr);
         return;
     }
@@ -362,22 +448,34 @@ void EmberLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b,
     const bool on = b.getToggleState();
     auto& props = b.getProperties();
 
-    if (props["tab"] || props["link"])
-        return;   // text-only
+    if (props["tab"] || props["link"] || props["iconOnly"].toString().isNotEmpty())
+        return;   // text / icon only
 
     if (props["footswitch"])
     {
         const auto c = r.getCentre();
         const float rad = jmin (r.getWidth(), r.getHeight()) * 0.40f;
-        g.setColour (Colours::black.withAlpha (0.55f));
-        g.fillEllipse (c.x - rad + 1.5f, c.y - rad + 3.0f, rad * 2.0f, rad * 2.0f);
-        g.setGradientFill (ColourGradient (Colour (0xffd4d6da), c.x, c.y - rad, Colour (0xff5d6066), c.x, c.y + rad, false));
+        // white sculpted footswitch: a ring, then the cap (pressed = slightly lower and darker)
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.5f), c.x, c.y + rad * 0.4f, Colours::transparentBlack, c.x, c.y + rad * 1.5f, true));
+        g.fillEllipse (Rectangle<float> (rad * 2.6f, rad * 2.4f).withCentre (c.translated (0.0f, rad * 0.3f)));
+        g.setGradientFill (ColourGradient (Colour (0xffa9acb2), c.x, c.y + rad, Colour (0xfff4f5f6), c.x, c.y - rad, false));
         g.fillEllipse (c.x - rad, c.y - rad, rad * 2.0f, rad * 2.0f);
-        const float ir = rad * (down ? 0.60f : 0.66f);
-        g.setGradientFill (ColourGradient (Colour (0xff8a8d93), c.x, c.y + ir, Colour (0xffeceef1), c.x, c.y - ir, false));
-        g.fillEllipse (c.x - ir, c.y - ir, ir * 2.0f, ir * 2.0f);
-        g.setColour (Colours::black.withAlpha (highlighted ? 0.25f : 0.4f));
-        g.drawEllipse (c.x - rad, c.y - rad, rad * 2.0f, rad * 2.0f, 1.0f);
+        const float ir = rad * (down ? 0.66f : 0.72f);
+        const auto cc = c.translated (0.0f, down ? 1.0f : 0.0f);
+        g.setGradientFill (ColourGradient (Colour (0xfffcfcfd), cc.x - ir * 0.4f, cc.y - ir, Colour (highlighted ? 0xffd5d8dc : 0xffc8cbd0), cc.x + ir * 0.3f, cc.y + ir, false));
+        g.fillEllipse (cc.x - ir, cc.y - ir, ir * 2.0f, ir * 2.0f);
+        g.setColour (Colours::black.withAlpha (0.18f));
+        g.drawEllipse (cc.x - ir, cc.y - ir, ir * 2.0f, ir * 2.0f, 0.8f);
+        return;
+    }
+
+    if (props["choice"])   // one of a set of options (cab / mic lists): the chosen one lights up
+    {
+        const auto acc = accentOf (b);
+        g.setColour (on ? acc.withAlpha (0.22f) : Colours::white.withAlpha (down ? 0.10f : highlighted ? 0.07f : 0.035f));
+        g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (on ? acc.withAlpha (0.9f) : Colours::white.withAlpha (0.08f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 5.0f, on ? 1.4f : 1.0f);
         return;
     }
 
@@ -404,20 +502,37 @@ void EmberLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b, b
     if (props["tab"])
     {
         const bool on = b.getToggleState();
-        g.setColour (on ? Colours::white : highlighted ? Colours::white.withAlpha (0.75f) : Palette::muted);
-        g.setFont (spaced (13.0f, on, 0.18f));
-        g.drawText (b.getButtonText(), r.withTrimmedBottom (10.0f), Justification::centred);
+        const auto col = on ? Colours::white : highlighted ? Colours::white.withAlpha (0.8f) : Colours::white.withAlpha (0.5f);
+        const auto icon = props["icon"].toString();
+        if (icon.isNotEmpty())
+        {
+            drawIcon (g, icon, r.withHeight (32.0f).withY (r.getY() + 2.0f), col);
+            g.setColour (col.withMultipliedAlpha (0.85f));
+            g.setFont (spaced (8.5f, true, 0.25f));
+            g.drawText (b.getButtonText(), r.withY (r.getY() + 35.0f).withHeight (12.0f), Justification::centred);
+        }
+        else
+        {
+            g.setColour (col);
+            g.setFont (spaced (13.0f, on, 0.18f));
+            g.drawText (b.getButtonText(), r.withTrimmedBottom (10.0f), Justification::centred);
+        }
         if (on)
         {
             g.setColour (Colours::white);
-            g.fillEllipse (Rectangle<float> (5.0f, 5.0f).withCentre ({ r.getCentreX(), r.getBottom() - 6.0f }));
+            g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre ({ r.getCentreX(), r.getBottom() - 3.0f }));
         }
         if (props["live"])   // the amp you hear
         {
-            const float tw = (float) GlyphArrangement::getStringWidthInt (spaced (13.0f, on, 0.18f), b.getButtonText());
             g.setColour (accentOf (b));
-            g.fillEllipse (r.getCentreX() + tw * 0.5f + 7.0f, r.getCentreY() - 8.0f, 6.0f, 6.0f);
+            g.fillEllipse (r.getCentreX() + 18.0f, r.getY() + 4.0f, 6.0f, 6.0f);
         }
+        return;
+    }
+    if (props["iconOnly"].toString().isNotEmpty())
+    {
+        drawIcon (g, props["iconOnly"].toString(), r.reduced (3.0f),
+                  Colours::white.withAlpha (! b.isEnabled() ? 0.25f : highlighted ? 1.0f : 0.75f));
         return;
     }
 
@@ -433,6 +548,28 @@ void EmberLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& 
 {
     using namespace juce;
     auto r = b.getLocalBounds().toFloat();
+    if (b.getProperties()["vswitch"])
+    {
+        // a vertical flip switch with a label beside each end
+        const bool on = b.getToggleState();
+        const bool knobTop = (bool) b.getProperties()["onIsTop"] ? on : ! on;
+        auto slot = Rectangle<float> (20.0f, jmin (44.0f, r.getHeight() - 4.0f)).withPosition (r.getX() + 2.0f, r.getCentreY() - jmin (22.0f, r.getHeight() * 0.5f - 2.0f));
+        const auto ink = (bool) b.getProperties()["darkText"] ? Colour (0xff24262b) : Colours::white;
+        g.setColour (Colours::black.withAlpha (0.45f));
+        g.fillRoundedRectangle (slot, 10.0f);
+        g.setColour (ink.withAlpha (highlighted ? 0.6f : 0.4f));
+        g.drawRoundedRectangle (slot.reduced (0.5f), 10.0f, 1.3f);
+        const auto k = Rectangle<float> (14.0f, 14.0f).withCentre ({ slot.getCentreX(), knobTop ? slot.getY() + 10.0f : slot.getBottom() - 10.0f });
+        g.setColour (Colours::white.withAlpha (0.9f));
+        g.fillEllipse (k);
+        g.setFont (spaced (10.5f, true, 0.12f));
+        auto labels = r.withTrimmedLeft (30.0f);
+        g.setColour (ink.withAlpha (knobTop ? 0.95f : 0.4f));
+        g.drawText (b.getProperties()["topText"].toString(), labels.withHeight (r.getHeight() * 0.5f), Justification::centredLeft);
+        g.setColour (ink.withAlpha (knobTop ? 0.4f : 0.95f));
+        g.drawText (b.getProperties()["bottomText"].toString(), labels.withTrimmedTop (r.getHeight() * 0.5f), Justification::centredLeft);
+        return;
+    }
     const bool on = b.getToggleState();
     const auto accent = accentOf (b, Colours::white);
     const auto textCol = b.getProperties()["textColour"].isVoid() ? Palette::text
@@ -668,27 +805,13 @@ AmpPage::AmpPage (EmberAmpEditor& o, EmberAmpProcessor& p, int a)
 
     logo = juce::ImageCache::getFromMemory (BinaryData::logo_png, BinaryData::logo_pngSize);
 
-    // cab + mic
-    for (auto* l : { &cabTitle, &micTitle })
-    {
-        l->setFont (spaced (10.0f, true, 0.25f));
-        l->setColour (juce::Label::textColourId, Palette::muted);
-        addAndMakeVisible (l);
-    }
-    cabTitle.setText ("CABINET", juce::dontSendNotification);
-    micTitle.setText ("MICROPHONE", juce::dontSendNotification);
-    cabBox.addItemList (EmberAmpProcessor::cabNames(), 1);
-    micBox.addItemList (EmberAmpProcessor::micNames(), 1);
-    cabBox.setTooltip ("Speaker cabinet");
-    micBox.setTooltip ("Microphone on the cabinet");
-    addAndMakeVisible (cabBox);
-    addAndMakeVisible (micBox);
-    cabBoxAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (p.apvts, EmberAmpProcessor::ampParamID (a, "cabModel"), cabBox);
-    micBoxAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (p.apvts, EmberAmpProcessor::ampParamID (a, "mic"), micBox);
-    posKnob  = std::make_unique<Knob> (p.apvts, EmberAmpProcessor::ampParamID (a, "micPos"),  "Position", accent, "pedal", Palette::text, 10.0f);
-    distKnob = std::make_unique<Knob> (p.apvts, EmberAmpProcessor::ampParamID (a, "micDist"), "Distance", accent, "pedal", Palette::text, 10.0f);
-    addAndMakeVisible (*posKnob);
-    addAndMakeVisible (*distKnob);
+    cabSummary.setFont (spaced (11.5f, true, 0.18f));
+    cabSummary.setColour (juce::Label::textColourId, Palette::text.withAlpha (0.85f));
+    cabSummary.setMinimumHorizontalScale (0.7f);
+    addAndMakeVisible (cabSummary);
+    editCabButton.setTooltip ("Choose the cabinet and microphone, and place the mic");
+    editCabButton.onClick = [this] { owner.showPage (EmberAmpEditor::cabPageIndex); };
+    addAndMakeVisible (editCabButton);
     refresh();
 }
 
@@ -714,15 +837,15 @@ void AmpPage::refresh()
     const bool ir = proc.hasIR (amp);
     irLabel.setText (ir ? "IR  " + proc.getIRFile (amp).getFileNameWithoutExtension() : juce::String ("NO IR LOADED"),
                      juce::dontSendNotification);
-    // a loaded IR replaces the built-in cab and mic
-    for (juce::Component* c : { (juce::Component*) &cabBox, (juce::Component*) &micBox, (juce::Component*) posKnob.get(), (juce::Component*) distKnob.get() })
-        c->setEnabled (! ir);
-    const float pos  = proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, "micPos"))->load();
-    const float dist = proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, "micDist"))->load();
-    if (pos != shownPos || dist != shownDist || ir != shownIR)
     {
-        shownPos = pos; shownDist = dist; shownIR = ir;
-        repaint (speakerArea.expanded (4));
+        auto raw = [this] (const char* id) { return proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, id))->load(); };
+        const auto text = ir ? juce::String ("CUSTOM IR")
+                             : EmberAmpProcessor::cabNames()[juce::roundToInt (raw ("cabModel"))].toUpperCase() + "   /   "
+                               + EmberAmpProcessor::micNames()[juce::roundToInt (raw ("mic"))].toUpperCase() + "   /   "
+                               + proc.apvts.getParameter (EmberAmpProcessor::ampParamID (amp, "micPos"))->getCurrentValueAsText().toUpperCase() + "   /   "
+                               + proc.apvts.getParameter (EmberAmpProcessor::ampParamID (amp, "micDist"))->getCurrentValueAsText().toUpperCase();
+        if (cabSummary.getText() != text)
+            cabSummary.setText (text, juce::dontSendNotification);
     }
     irLabel.setColour (juce::Label::textColourId, ir ? accent : Palette::muted.withAlpha (0.7f));
     clearIRButton.setEnabled (ir);
@@ -970,30 +1093,6 @@ void AmpPage::paint (juce::Graphics& g)
     }
     g.restoreState();
 
-    // ---- where the mic is: a speaker seen from the front, the mic as a dot
-    if (! speakerArea.isEmpty())
-    {
-        const auto sp = speakerArea.toFloat();
-        const auto c = sp.getCentre();
-        const float r = jmin (sp.getWidth(), sp.getHeight()) * 0.5f - 2.0f;
-        const float alpha = shownIR ? 0.35f : 1.0f;
-        g.setGradientFill (ColourGradient (Colour (0xff2b2c31).withMultipliedAlpha (alpha), c.x, c.y - r, Colour (0xff0e0f11).withMultipliedAlpha (alpha), c.x, c.y + r, false));
-        g.fillEllipse (Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (c));
-        g.setColour (Colours::white.withAlpha (0.12f * alpha));
-        for (float f : { 1.0f, 0.78f, 0.55f })
-            g.drawEllipse (Rectangle<float> (r * 2.0f * f, r * 2.0f * f).withCentre (c), 1.0f);
-        g.setGradientFill (ColourGradient (Colour (0xff4a4c52).withMultipliedAlpha (alpha), c.x, c.y - r * 0.3f, Colour (0xff1a1b1e).withMultipliedAlpha (alpha), c.x, c.y + r * 0.3f, false));
-        g.fillEllipse (Rectangle<float> (r * 0.6f, r * 0.6f).withCentre (c));   // dust cap
-        // mic: further out = further from the centre; closer = bigger dot
-        const float px = c.x + jlimit (0.0f, 1.0f, shownPos) * r * 0.92f;
-        const float d = 13.0f - 6.0f * jlimit (0.0f, 1.0f, shownDist);
-        g.setColour (accent.withAlpha (0.30f * alpha));
-        g.fillEllipse (Rectangle<float> (d * 2.0f, d * 2.0f).withCentre ({ px, c.y }));
-        g.setColour (accent.withAlpha (alpha));
-        g.fillEllipse (Rectangle<float> (d, d).withCentre ({ px, c.y }));
-        g.setColour (Colours::white.withAlpha (0.9f * alpha));
-        g.drawEllipse (Rectangle<float> (d, d).withCentre ({ px, c.y }), 1.0f);
-    }
 }
 
 void AmpPage::resized()
@@ -1013,33 +1112,20 @@ void AmpPage::resized()
     for (auto* k : knobs)
         k->setBounds (kr.removeFromLeft (kw).reduced (4, 0));
 
-    // cab strip: [CAB] [cabinet] [microphone] (position) (distance) speaker | IR name [LOAD IR] [CLEAR]
+    // cab strip: [CAB] cab · mic · position · distance [EDIT CAB] | IR name [LOAD IR] [CLEAR]
     auto strip = cabTop.withTrimmedTop (22).withTrimmedBottom (4).reduced (60, 0).withTrimmedLeft (60);   // clear of the cable
-    auto centreRow = [&] (juce::Rectangle<int> col, int h) { return col.withSizeKeepingCentre (col.getWidth(), h); };
+    auto centreRow = [] (juce::Rectangle<int> col, int h) { return col.withSizeKeepingCentre (col.getWidth(), h); };
     cabButton.setBounds (centreRow (strip.removeFromLeft (84), 34));
-    strip.removeFromLeft (14);
-    {
-        auto col = centreRow (strip.removeFromLeft (180), 50);
-        cabTitle.setBounds (col.removeFromTop (16));
-        cabBox.setBounds (col.removeFromTop (32));
-    }
-    strip.removeFromLeft (10);
-    {
-        auto col = centreRow (strip.removeFromLeft (150), 50);
-        micTitle.setBounds (col.removeFromTop (16));
-        micBox.setBounds (col.removeFromTop (32));
-    }
-    strip.removeFromLeft (8);
-    posKnob->setBounds (strip.removeFromLeft (76));
-    distKnob->setBounds (strip.removeFromLeft (76));
-    strip.removeFromLeft (6);
-    speakerArea = centreRow (strip.removeFromLeft (78), 78);
-    strip.removeFromLeft (14);
+    strip.removeFromLeft (16);
     clearIRButton.setBounds (centreRow (strip.removeFromRight (80), 28));
     strip.removeFromRight (8);
     loadIRButton.setBounds (centreRow (strip.removeFromRight (96), 28));
-    strip.removeFromRight (10);
-    irLabel.setBounds (centreRow (strip, 28));
+    strip.removeFromRight (12);
+    irLabel.setBounds (centreRow (strip.removeFromRight (180), 28));
+    strip.removeFromRight (12);
+    editCabButton.setBounds (centreRow (strip.removeFromRight (100), 28));
+    strip.removeFromRight (12);
+    cabSummary.setBounds (centreRow (strip, 28));
 }
 
 //==============================================================================
@@ -1048,7 +1134,11 @@ PedalUnit::PedalUnit (juce::AudioProcessorValueTreeState& state, const juce::Str
     : name (n), body (b)
 {
     for (auto& [id, title] : ks)
-        addAndMakeVisible (knobs.add (new Knob (state, id, title, body.brighter (0.6f).withSaturation (0.5f), "pedal", Palette::text, 11.0f)));
+    {
+        auto* k = knobs.add (new Knob (state, id, title, body.brighter (0.6f).withSaturation (0.5f), "clay", Palette::text, 10.0f));
+        k->getSlider().getProperties().set ("knobLight", true);
+        addAndMakeVisible (k);
+    }
 
     footswitch.setClickingTogglesState (true);
     footswitch.getProperties().set ("footswitch", true);
@@ -1065,56 +1155,61 @@ void PedalUnit::refresh()
 void PedalUnit::paint (juce::Graphics& g)
 {
     using namespace juce;
-    auto r = getLocalBounds().toFloat().reduced (2.0f);
+    auto r = getLocalBounds().toFloat().reduced (3.0f);
     const bool on = footswitch.getToggleState();
-    const auto colour = body.withSaturation (body.getSaturation() * 0.85f);
+    // matte, softly coloured enclosure (the colour is muted, like powder coat)
+    const auto base = body.withSaturation (body.getSaturation() * 0.38f).withBrightness (on ? 0.50f : 0.36f);
+    const float corner = jmin (24.0f, r.getWidth() * 0.22f);
 
-    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.65f), r.getCentreX(), r.getBottom(), Colours::transparentBlack, r.getCentreX(), r.getBottom() + 14.0f, false));
-    g.fillRect (r.withY (r.getBottom() - 4.0f).withHeight (18.0f).reduced (6.0f, 0.0f));
-
-    // powder-coated enclosure
-    Path box; box.addRoundedRectangle (r, 6.0f);
-    g.setGradientFill (ColourGradient (Colour (0xff222327), r.getX(), r.getY(), Colour (0xff121315), r.getX(), r.getBottom(), false));
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.6f), r.getCentreX(), r.getBottom() - 10.0f, Colours::transparentBlack, r.getCentreX(), r.getBottom() + 16.0f, false));
+    g.fillRoundedRectangle (r.withY (r.getBottom() - 20.0f).withHeight (36.0f).reduced (6.0f, 0.0f), corner);
+    Path box; box.addRoundedRectangle (r, corner);
+    g.setGradientFill (ColourGradient (base.brighter (0.35f), r.getX(), r.getY(), base.darker (0.35f), r.getRight(), r.getBottom(), false));
     g.fillPath (box);
-    fillTextured (g, box, tolexTexture(), 0.6f);
-    g.setColour (Colours::white.withAlpha (0.08f));
-    g.drawHorizontalLine ((int) r.getY() + 1, r.getX() + 6.0f, r.getRight() - 6.0f);
-    g.setColour (Colours::black);
-    g.strokePath (box, PathStrokeType (1.0f));
+    // soft bevel: light rim on top / left, darker underside
+    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.30f), r.getX(), r.getY(), Colours::transparentWhite, r.getX(), r.getY() + 26.0f, false));
+    g.strokePath (box, PathStrokeType (2.0f));
+    g.setColour (Colours::black.withAlpha (0.45f));
+    g.drawRoundedRectangle (r.reduced (0.5f), corner, 1.0f);
 
-    // colour band with the name
-    auto band = r.reduced (6.0f).removeFromTop (34.0f);
-    g.setGradientFill (ColourGradient (colour.withMultipliedBrightness (on ? 0.95f : 0.45f), band.getX(), band.getY(),
-                                       colour.withMultipliedBrightness (on ? 0.65f : 0.30f), band.getX(), band.getBottom(), false));
-    g.fillRoundedRectangle (band, 3.0f);
-    g.setColour (Colours::white.withAlpha (on ? 0.25f : 0.08f));
-    g.drawHorizontalLine ((int) band.getY(), band.getX() + 3.0f, band.getRight() - 3.0f);
-    g.setColour (Colours::white.withAlpha (on ? 0.97f : 0.5f));
-    g.setFont (spaced (11.5f, true, 0.3f));
-    g.drawFittedText (name.toUpperCase(), band.reduced (4.0f, 0.0f).toNearestInt(), Justification::centred, 1, 0.6f);
-
-    // status LED
-    const auto led = Rectangle<float> (7.0f, 7.0f).withCentre ({ r.getCentreX(), r.getY() + 58.0f });
+    // status LED at the top
+    const auto led = Rectangle<float> (6.0f, 6.0f).withCentre ({ r.getCentreX(), r.getY() + 16.0f });
     if (on)
     {
-        g.setGradientFill (ColourGradient (Colour (0xffff3b30).withAlpha (0.5f), led.getCentreX(), led.getCentreY(), Colour (0x00ff3b30), led.getCentreX() + 9.0f, led.getCentreY(), true));
+        g.setGradientFill (ColourGradient (Colour (0xffff3b30).withAlpha (0.55f), led.getCentreX(), led.getCentreY(), Colour (0x00ff3b30), led.getCentreX() + 9.0f, led.getCentreY(), true));
         g.fillEllipse (led.expanded (7.0f));
     }
-    g.setColour (Colours::black.withAlpha (0.7f));
+    g.setColour (Colours::black.withAlpha (0.6f));
     g.fillEllipse (led.expanded (1.5f));
-    g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff2a1211));
+    g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff3a1715));
     g.fillEllipse (led);
+
+    // name printed above the footswitch
+    g.setColour (Colours::white.withAlpha (on ? 0.95f : 0.6f));
+    g.setFont (spaced (11.5f, false, 0.32f));
+    g.drawFittedText (name.toUpperCase(), nameArea.toNearestInt(), Justification::centred, 1, 0.55f);
 }
 
 void PedalUnit::resized()
 {
-    auto r = getLocalBounds().reduced (10, 0);
-    r.removeFromTop (72);
-    footswitch.setBounds (r.removeFromBottom (96).withSizeKeepingCentre (80, 80));
+    auto r = getLocalBounds().reduced (8, 0);
+    r.removeFromTop (30);
+    footswitch.setBounds (r.removeFromBottom (92).withSizeKeepingCentre (72, 72));
+    nameArea = r.removeFromBottom (30).toFloat();
     r.removeFromBottom (6);
-    const int kh = juce::jmin (124, r.getHeight() / juce::jmax (1, knobs.size()));
-    for (auto* k : knobs)
-        k->setBounds (r.removeFromTop (kh).reduced (10, 2));
+    // knobs: one centred; two side by side; three = two on top and one below (like a stompbox face)
+    const int n = knobs.size();
+    const int rowH = juce::jmin (110, n == 3 ? r.getHeight() / 2 : r.getHeight());
+    if (n == 1)
+        knobs[0]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (juce::jmin (r.getWidth(), 90), rowH));
+    else if (n >= 2)
+    {
+        auto top = r.removeFromTop (rowH);
+        knobs[0]->setBounds (top.removeFromLeft (top.getWidth() / 2));
+        knobs[1]->setBounds (top);
+        if (n >= 3)
+            knobs[2]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (r.getWidth() / 2 + 10, rowH));
+    }
 }
 
 //==============================================================================
@@ -1207,6 +1302,760 @@ void PedalsPage::resized()
 }
 
 //==============================================================================
+CabPage::CabPage (EmberAmpEditor& e, EmberAmpProcessor& p) : ed (e), proc (p)
+{
+    title.setFont (spaced (13.0f, true, 0.3f));
+    addAndMakeVisible (title);
+    for (auto* l : { &cabTitle, &micTitle, &irTitle })
+    {
+        l->setFont (spaced (10.5f, true, 0.3f));
+        l->setColour (juce::Label::textColourId, Palette::muted);
+        addAndMakeVisible (l);
+    }
+    cabTitle.setText ("CABINET", juce::dontSendNotification);
+    micTitle.setText ("MICROPHONE", juce::dontSendNotification);
+    irTitle.setText ("IMPULSE RESPONSE", juce::dontSendNotification);
+    hint.setFont (juce::FontOptions (12.0f));
+    hint.setColour (juce::Label::textColourId, Palette::muted);
+    hint.setJustificationType (juce::Justification::centred);
+    hint.setText ("Drag the mic anywhere on the cab  -  scroll sideways (or Shift + scroll) to slide it  -  scroll up / down for closer or further", juce::dontSendNotification);
+    hint.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (hint);
+
+    const auto cabs = EmberAmpProcessor::cabNames();
+    for (int i = 0; i < cabs.size(); ++i)
+    {
+        auto* b = cabButtons.add (new juce::TextButton (cabs[i]));
+        b->getProperties().set ("choice", true);
+        b->onClick = [this, i] { setParam ("cabModel", (float) i); };
+        addAndMakeVisible (b);
+    }
+    const auto mics = EmberAmpProcessor::micNames();
+    for (int i = 0; i < mics.size(); ++i)
+    {
+        auto* b = micButtons.add (new juce::TextButton (mics[i]));
+        b->getProperties().set ("choice", true);
+        b->onClick = [this, i] { setParam ("mic", (float) i); };
+        addAndMakeVisible (b);
+    }
+
+    irLabel.setFont (spaced (12.0f, false, 0.05f));
+    irLabel.setMinimumHorizontalScale (0.7f);
+    addAndMakeVisible (irLabel);
+    addAndMakeVisible (cabOn);
+    for (auto* b : { &loadIRButton, &clearIRButton }) addAndMakeVisible (b);
+    loadIRButton.onClick  = [this] { if (amp >= 0) ed.ampPages[amp]->chooseIR(); };
+    clearIRButton.onClick = [this] { if (amp >= 0) { proc.clearIR (amp); ed.ampPages[amp]->refresh(); refresh(); } };
+
+    bindToAmp (proc.getSelectedAmp());
+    startTimerHz (60);
+}
+
+void CabPage::timerCallback()
+{
+    if (! isShowing() || amp < 0) return;
+    // follow the parameters every frame (not just on the slower page refresh), then ease toward them
+    refresh();
+    const float tPos = juce::jlimit (0.0f, 1.0f, value ("micPos")), tDist = juce::jlimit (0.0f, 1.0f, value ("micDist"));
+    const auto tCentre = speakerCentre();
+    if (animPos < 0.0f || dragging) { animPos = tPos; }
+    if (animDist < 0.0f) { animDist = tDist; animCentre = tCentre; }
+    const float k = 0.28f;   // ease: a fraction of the way there each frame (about 90 ms to settle)
+    const float dp = tPos - animPos, dd = tDist - animDist;
+    const auto dc = tCentre - animCentre;
+    if (std::abs (dp) < 0.0005f && std::abs (dd) < 0.0005f && dc.getDistanceFromOrigin() < 0.2f)
+    {
+        if (animPos != tPos || animDist != tDist || animCentre != tCentre)
+        {
+            animPos = tPos; animDist = tDist; animCentre = tCentre;
+            repaint (cabView.expanded (30));
+        }
+        return;
+    }
+    animPos += dp * k; animDist += dd * k; animCentre += dc * k;
+    repaint (cabView.expanded (30));
+}
+
+juce::RangedAudioParameter* CabPage::param (const char* id) const
+{
+    return proc.apvts.getParameter (EmberAmpProcessor::ampParamID (amp, id));
+}
+
+float CabPage::value (const char* id) const
+{
+    return proc.apvts.getRawParameterValue (EmberAmpProcessor::ampParamID (amp, id))->load();
+}
+
+void CabPage::setParam (const char* id, float v)
+{
+    if (auto* prm = param (id))
+    {
+        prm->beginChangeGesture();
+        prm->setValueNotifyingHost (prm->convertTo0to1 (v));
+        prm->endChangeGesture();
+    }
+    refresh();
+}
+
+// the page always edits the amp you hear
+void CabPage::bindToAmp (int a)
+{
+    amp = juce::jlimit (0, (int) EmberAmpProcessor::numAmps - 1, a);
+    const auto accent = EmberAmpEditor::ampAccent (amp);
+    posKnob  = std::make_unique<Knob> (proc.apvts, EmberAmpProcessor::ampParamID (amp, "micPos"),  "Position", accent, "ring", Palette::text, 12.0f);
+    distKnob = std::make_unique<Knob> (proc.apvts, EmberAmpProcessor::ampParamID (amp, "micDist"), "Distance", accent, "ring", Palette::text, 12.0f);
+    addAndMakeVisible (*posKnob);
+    addAndMakeVisible (*distKnob);
+    cabOnAtt.reset();
+    cabOnAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (proc.apvts, EmberAmpProcessor::ampParamID (amp, "cab"), cabOn);
+    setAccent (cabOn, accent);
+    for (auto* b : cabButtons) setAccent (*b, accent);
+    for (auto* b : micButtons) setAccent (*b, accent);
+    title.setText ("CAB  -  " + EmberAmpProcessor::ampName (amp).toUpperCase() + " AMP", juce::dontSendNotification);
+    shownCab = shownMic = shownPos = shownDist = shownSpk = -1.0f;
+    animPos = animDist = -1.0f;
+    resized();
+    refresh();
+}
+
+void CabPage::refresh()
+{
+    if (proc.getSelectedAmp() != amp)
+        bindToAmp (proc.getSelectedAmp());
+
+    const bool ir = proc.hasIR (amp);
+    irLabel.setText (ir ? proc.getIRFile (amp).getFileNameWithoutExtension() : juce::String ("None - using the cabinet and mic below"),
+                     juce::dontSendNotification);
+    irLabel.setColour (juce::Label::textColourId, ir ? EmberAmpEditor::ampAccent (amp) : Palette::muted);
+    clearIRButton.setEnabled (ir);
+    for (auto* b : cabButtons) b->setEnabled (! ir);
+    for (auto* b : micButtons) b->setEnabled (! ir);
+    posKnob->setEnabled (! ir);
+    distKnob->setEnabled (! ir);
+
+    const float cab = value ("cabModel"), mic = value ("mic"), pos = value ("micPos"), dist = value ("micDist"), spk = value ("micSpeaker");
+    const bool on = cabOn.getToggleState();
+    for (int i = 0; i < cabButtons.size(); ++i) cabButtons[i]->setToggleState (i == juce::roundToInt (cab), juce::dontSendNotification);
+    for (int i = 0; i < micButtons.size(); ++i) micButtons[i]->setToggleState (i == juce::roundToInt (mic), juce::dontSendNotification);
+    if (cab != shownCab || mic != shownMic || pos != shownPos || dist != shownDist || ir != shownIR || on != shownOn || spk != shownSpk)
+    {
+        shownCab = cab; shownMic = mic; shownPos = pos; shownDist = dist; shownIR = ir; shownOn = on; shownSpk = spk;
+        repaint (cabView.expanded (30));
+    }
+}
+
+int CabPage::speakerCount() const
+{
+    return EmberAmpProcessor::speakersInCab (juce::roundToInt (shownCab));
+}
+
+int CabPage::mikedSpeaker() const
+{
+    return juce::jlimit (0, speakerCount() - 1, juce::roundToInt (shownSpk) - 1);
+}
+
+// speakers: 1x12 = one in the middle; 2x12 = left, right; 4x12 = top-left, top-right, bottom-left, bottom-right
+juce::Point<float> CabPage::speakerCentreAt (int i) const
+{
+    const auto v = cabView.toFloat().reduced (40.0f, 36.0f);
+    const int n = speakerCount();
+    if (n == 1) return v.getCentre();
+    if (n == 2) return { v.getX() + v.getWidth() * (i == 0 ? 0.27f : 0.73f), v.getCentreY() };
+    return { v.getX() + v.getWidth() * (i % 2 == 0 ? 0.27f : 0.73f), v.getY() + v.getHeight() * (i < 2 ? 0.27f : 0.73f) };
+}
+
+juce::Point<float> CabPage::speakerCentre() const
+{
+    return speakerCentreAt (mikedSpeaker());
+}
+
+float CabPage::speakerRadius() const
+{
+    const auto v = cabView.toFloat().reduced (40.0f, 36.0f);
+    const int n = speakerCount();
+    if (n == 1) return juce::jmin (v.getWidth(), v.getHeight()) * 0.40f;
+    if (n == 2) return juce::jmin (v.getWidth() * 0.22f, v.getHeight() * 0.40f);
+    return juce::jmin (v.getWidth() * 0.21f, v.getHeight() * 0.22f);
+}
+
+void CabPage::paint (juce::Graphics& g)
+{
+    using namespace juce;
+    const auto theme = AmpPage::themeFor (amp);
+    const auto accent = EmberAmpEditor::ampAccent (amp);
+    const bool light = theme.lightPanel;
+    const float alpha = shownIR || ! shownOn ? 0.45f : 1.0f;
+
+    // ---- side panel
+    {
+        const auto sp = side.toFloat();
+        g.setColour (Colour (0xff0d0e12).withAlpha (0.85f));
+        g.fillRoundedRectangle (sp, 10.0f);
+        g.setColour (Colours::white.withAlpha (0.07f));
+        g.drawRoundedRectangle (sp.reduced (0.5f), 10.0f, 1.0f);
+    }
+
+    // ---- the cabinet, front on: sculpted frame like the amp, speakers behind open baffle
+    const auto v = cabView.toFloat();
+    g.setColour (Colours::black.withAlpha (0.5f));
+    g.fillRoundedRectangle (v.translated (0.0f, 8.0f), 28.0f);
+    Path frame; frame.addRoundedRectangle (v, 28.0f);
+    g.setGradientFill (ColourGradient (theme.chassisTop, v.getX(), v.getY(), theme.chassisBottom, v.getX(), v.getBottom(), false));
+    g.fillPath (frame);
+    g.setColour (Colours::white.withAlpha (light ? 0.6f : 0.14f));
+    g.drawRoundedRectangle (v.reduced (1.0f), 27.0f, 1.5f);
+
+    auto baffle = v.reduced (30.0f, 28.0f);
+    g.setColour (Colours::black.withAlpha (light ? 0.25f : 0.6f));
+    g.fillRoundedRectangle (baffle.expanded (2.0f), 8.0f);
+    g.setGradientFill (ColourGradient (Colour (0xff1e1f23), baffle.getX(), baffle.getY(), Colour (0xff111215), baffle.getX(), baffle.getBottom(), false));
+    g.fillRoundedRectangle (baffle, 8.0f);
+    {
+        Path b; b.addRoundedRectangle (baffle, 8.0f);
+        fillTextured (g, b, tolexTexture(), 0.8f);
+    }
+
+    const int n = speakerCount();
+    const float r = speakerRadius();
+    const auto v2 = cabView.toFloat().reduced (40.0f, 36.0f);
+    juce::ignoreUnused (v2);
+    Array<Point<float>> centres;
+    for (int i = 0; i < n; ++i) centres.add (speakerCentreAt (i));
+
+    for (int i = 0; i < centres.size(); ++i)
+    {
+        const auto c = centres[i];
+        const bool miked = i == mikedSpeaker();
+        // basket rim, cone, surround, dust cap
+        g.setColour (Colours::black.withAlpha (0.6f));
+        g.fillEllipse (Rectangle<float> (r * 2.12f, r * 2.12f).withCentre (c.translated (0.0f, 3.0f)));
+        g.setGradientFill (ColourGradient (Colour (0xff5b5e65).withMultipliedAlpha (alpha), c.x, c.y - r, Colour (0xff1c1d21).withMultipliedAlpha (alpha), c.x, c.y + r, false));
+        g.fillEllipse (Rectangle<float> (r * 2.08f, r * 2.08f).withCentre (c));
+        g.setGradientFill (ColourGradient (Colour (0xff2c2d32), c.x - r * 0.3f, c.y - r, Colour (0xff0b0b0d), c.x + r * 0.3f, c.y + r, false));
+        g.fillEllipse (Rectangle<float> (r * 1.92f, r * 1.92f).withCentre (c));
+        for (int k = 0; k < 9; ++k)   // concentric ridges in the cone
+        {
+            const float f = 0.40f + 0.055f * (float) k;
+            g.setColour (Colours::white.withAlpha (0.045f));
+            g.drawEllipse (Rectangle<float> (r * 2.0f * f, r * 2.0f * f).withCentre (c.translated (0.0f, -0.8f)), 1.0f);
+            g.setColour (Colours::black.withAlpha (0.35f));
+            g.drawEllipse (Rectangle<float> (r * 2.0f * f, r * 2.0f * f).withCentre (c.translated (0.0f, 0.8f)), 1.0f);
+        }
+        for (int k = 0; k < 4; ++k)   // rim screws
+        {
+            const float a = MathConstants<float>::halfPi * (float) k;
+            const auto sp = c + Point<float> (std::sin (a), -std::cos (a)) * (r * 0.985f);
+            g.setColour (Colour (0xff8d9097).withMultipliedAlpha (alpha));
+            g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre (sp));
+        }
+        g.setColour (Colours::white.withAlpha (0.10f));
+        g.drawEllipse (Rectangle<float> (r * 1.80f, r * 1.80f).withCentre (c), 2.0f);
+        g.setGradientFill (ColourGradient (Colour (0xff55585f), c.x - r * 0.1f, c.y - r * 0.32f, Colour (0xff141518), c.x + r * 0.1f, c.y + r * 0.32f, false));
+        g.fillEllipse (Rectangle<float> (r * 0.64f, r * 0.64f).withCentre (c));
+        g.setColour (Colours::white.withAlpha (0.18f));
+        g.drawEllipse (Rectangle<float> (r * 0.64f, r * 0.64f).withCentre (c), 1.0f);
+        if (miked)
+        {
+            g.setColour (accent.withAlpha (0.55f * alpha));
+            g.drawEllipse (Rectangle<float> (r * 2.2f, r * 2.2f).withCentre (c), 1.5f);
+        }
+        // speaker number (click a speaker to mic it)
+        g.setColour (Colours::white.withAlpha (miked ? 0.8f : 0.35f));
+        g.setFont (spaced (10.0f, true, 0.2f));
+        g.drawText (String (i + 1), Rectangle<float> (24.0f, 14.0f).withCentre (c.translated (-r * 0.78f, -r * 0.82f)), Justification::centred);
+    }
+
+    // ---- the mic, seen from the front: further from the centre = darker tone; nearer = bigger
+    const auto c = animDist < 0.0f ? speakerCentre() : animCentre;
+    const float pos = jlimit (0.0f, 1.0f, animPos < 0.0f ? shownPos : animPos), dist = jlimit (0.0f, 1.0f, animDist < 0.0f ? shownDist : animDist);
+    const auto mp = c + Point<float> (std::cos (micAngle), std::sin (micAngle)) * (pos * r * 0.95f);
+    const int micType = roundToInt (shownMic);
+
+    // ---- the microphone, seen from the front as it points into the speaker (like looking past it at the cone)
+    {
+        const float u = r * (0.085f - 0.025f * dist);   // closer = bigger
+        // soft shadow on the cone: further back = more offset, softer
+        const float off = 3.0f + 10.0f * dist;
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha ((0.6f - 0.2f * dist) * alpha), mp.x + off, mp.y + off,
+                                           Colours::transparentBlack, mp.x + off + u * 2.2f, mp.y + off, true));
+        g.fillEllipse (Rectangle<float> (u * 4.4f, u * 4.4f).withCentre (mp.translated (off, off)));
+
+        auto mesh = [&] (const Path& area, float step, Colour c)
+        {
+            g.saveState();
+            g.reduceClipRegion (area);
+            g.setColour (c);
+            const auto b = area.getBounds();
+            for (float d = -b.getHeight(); d < b.getWidth() + b.getHeight(); d += step)
+            {
+                g.drawLine (b.getX() + d, b.getY(), b.getX() + d - b.getHeight(), b.getBottom(), 0.6f);
+                g.drawLine (b.getX() + d - b.getHeight(), b.getY(), b.getX() + d, b.getBottom(), 0.6f);
+            }
+            g.restoreState();
+        };
+
+        Rectangle<float> outline;
+        switch (micType)
+        {
+            case 1:   // ribbon: a slim upright bar, dark, with a red stripe
+            {
+                auto body = Rectangle<float> (u * 1.25f, u * 3.6f).withCentre (mp);
+                outline = body;
+                g.setGradientFill (ColourGradient (Colour (0xff4a4c52).withMultipliedAlpha (alpha), body.getX(), body.getY(), Colour (0xff0d0e10).withMultipliedAlpha (alpha), body.getRight(), body.getY(), false));
+                g.fillRoundedRectangle (body, u * 0.35f);
+                Path grille; grille.addRoundedRectangle (body.reduced (u * 0.22f, u * 0.3f).withTrimmedBottom (u * 0.9f), u * 0.2f);
+                g.setColour (Colour (0xff1a1b1e).withMultipliedAlpha (alpha));
+                g.fillPath (grille);
+                mesh (grille, jmax (2.0f, u * 0.22f), Colours::white.withAlpha (0.22f * alpha));
+                g.setColour (Colour (0xffd8322a).withMultipliedAlpha (alpha));
+                g.fillRect (Rectangle<float> (u * 0.16f, u * 0.75f).withCentre ({ body.getCentreX(), body.getBottom() - u * 0.55f }));
+                g.setColour (Colours::white.withAlpha (0.35f * alpha));
+                g.drawRoundedRectangle (body, u * 0.35f, 0.8f);
+                break;
+            }
+            case 2:   // condenser: a big silver disc with a fine mesh
+            {
+                const float rr = u * 1.55f;
+                outline = Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre (mp);
+                g.setGradientFill (ColourGradient (Colour (0xfff2f3f5).withMultipliedAlpha (alpha), mp.x - rr * 0.6f, mp.y - rr, Colour (0xff7b7e85).withMultipliedAlpha (alpha), mp.x + rr * 0.6f, mp.y + rr, false));
+                g.fillEllipse (outline);
+                Path grille; grille.addEllipse (outline.reduced (rr * 0.18f));
+                g.setGradientFill (ColourGradient (Colour (0xffcdd0d5).withMultipliedAlpha (alpha), mp.x, mp.y - rr, Colour (0xff5d6067).withMultipliedAlpha (alpha), mp.x, mp.y + rr, false));
+                g.fillPath (grille);
+                mesh (grille, jmax (2.0f, u * 0.2f), Colours::black.withAlpha (0.28f * alpha));
+                g.setColour (Colours::black.withAlpha (0.4f * alpha));
+                g.drawEllipse (outline, 1.0f);
+                break;
+            }
+            case 3:   // large dynamic: black, with long slots across the front
+            {
+                const float rr = u * 1.3f;
+                outline = Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre (mp);
+                g.setGradientFill (ColourGradient (Colour (0xff3c3e44).withMultipliedAlpha (alpha), mp.x - rr * 0.5f, mp.y - rr, Colour (0xff08090a).withMultipliedAlpha (alpha), mp.x + rr * 0.5f, mp.y + rr, false));
+                g.fillEllipse (outline);
+                g.setColour (Colours::black.withAlpha (0.8f * alpha));
+                for (int k = -2; k <= 2; ++k)
+                    g.fillRoundedRectangle (Rectangle<float> (rr * 1.2f, rr * 0.12f).withCentre (mp.translated (0.0f, (float) k * rr * 0.28f)), rr * 0.06f);
+                g.setColour (Colours::white.withAlpha (0.25f * alpha));
+                g.drawEllipse (outline.reduced (0.5f), 1.0f);
+                break;
+            }
+            default:  // dynamic: small round head, silver ring around a dark mesh
+            {
+                const float rr = u * 1.0f;
+                outline = Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre (mp);
+                g.setGradientFill (ColourGradient (Colour (0xffeef0f2).withMultipliedAlpha (alpha), mp.x - rr * 0.7f, mp.y - rr, Colour (0xff6d7077).withMultipliedAlpha (alpha), mp.x + rr * 0.7f, mp.y + rr, false));
+                g.fillEllipse (outline);
+                Path grille; grille.addEllipse (outline.reduced (rr * 0.28f));
+                g.setColour (Colour (0xff16171a).withMultipliedAlpha (alpha));
+                g.fillPath (grille);
+                mesh (grille, jmax (1.8f, u * 0.2f), Colours::white.withAlpha (0.25f * alpha));
+                g.setColour (Colours::white.withAlpha (0.6f * alpha));
+                g.fillEllipse (Rectangle<float> (rr * 0.35f, rr * 0.22f).withCentre (mp.translated (-rr * 0.45f, -rr * 0.6f)));
+                break;
+            }
+        }
+        if (dragging)
+        {
+            g.setColour (accent.withAlpha (0.9f * alpha));
+            g.drawEllipse (Rectangle<float> (jmax (outline.getWidth(), outline.getHeight()) + 10.0f, jmax (outline.getWidth(), outline.getHeight()) + 10.0f).withCentre (mp), 1.5f);
+        }
+    }
+
+    // readout under the cab
+    g.setColour (Palette::text.withAlpha (0.85f));
+    g.setFont (spaced (12.0f, true, 0.25f));
+    const auto pText = proc.apvts.getParameter (EmberAmpProcessor::ampParamID (amp, "micPos"))->getCurrentValueAsText();
+    const auto dText = proc.apvts.getParameter (EmberAmpProcessor::ampParamID (amp, "micDist"))->getCurrentValueAsText();
+    g.drawText ((EmberAmpProcessor::cabNames()[roundToInt (shownCab)] + "   /   " + EmberAmpProcessor::micNames()[micType]
+                 + "   /   SPEAKER " + String (mikedSpeaker() + 1) + "   /   " + pText + " out   /   " + dText).toUpperCase(),
+                Rectangle<float> (v.getX(), v.getBottom() + 16.0f, v.getWidth(), 20.0f), Justification::centred);
+    if (shownIR || ! shownOn)
+    {
+        g.setColour (Colours::black.withAlpha (0.55f));
+        g.fillRoundedRectangle (Rectangle<float> (360.0f, 40.0f).withCentre (v.getCentre()), 8.0f);
+        g.setColour (Colours::white);
+        g.setFont (spaced (13.0f, true, 0.2f));
+        g.drawText (! shownOn ? "CAB OFF" : "USING YOUR IR INSTEAD", Rectangle<float> (360.0f, 40.0f).withCentre (v.getCentre()), Justification::centred);
+    }
+}
+
+void CabPage::resized()
+{
+    auto r = getLocalBounds().reduced (24, 12);
+    side = r.removeFromRight (340);
+    r.removeFromRight (24);
+    title.setBounds (r.removeFromTop (24));
+    hint.setBounds (r.removeFromBottom (22));
+    r.removeFromBottom (36);
+    cabView = r.reduced (10, 10);
+
+    auto s = side.reduced (20, 16);
+    cabOn.setBounds (s.removeFromTop (26).removeFromLeft (90));
+    s.removeFromTop (6);
+    cabTitle.setBounds (s.removeFromTop (18));
+    for (auto* b : cabButtons) { b->setBounds (s.removeFromTop (26)); s.removeFromTop (3); }
+    s.removeFromTop (8);
+    micTitle.setBounds (s.removeFromTop (18));
+    {
+        auto row1 = s.removeFromTop (26); s.removeFromTop (3);
+        auto row2 = s.removeFromTop (26);
+        for (int i = 0; i < micButtons.size(); ++i)
+        {
+            auto& row = i < 2 ? row1 : row2;
+            micButtons[i]->setBounds (i % 2 == 0 ? row.removeFromLeft (row.getWidth() / 2 - 2) : row.withTrimmedLeft (2));
+        }
+    }
+    s.removeFromTop (8);
+    auto knobs = s.removeFromTop (104);
+    if (posKnob != nullptr)  posKnob->setBounds (knobs.removeFromLeft (knobs.getWidth() / 2).reduced (10, 0));
+    if (distKnob != nullptr) distKnob->setBounds (knobs.reduced (10, 0));
+    s.removeFromTop (6);
+    irTitle.setBounds (s.removeFromTop (18));
+    irLabel.setBounds (s.removeFromTop (24));
+    s.removeFromTop (6);
+    auto irRow = s.removeFromTop (30);
+    loadIRButton.setBounds (irRow.removeFromLeft (irRow.getWidth() / 2 - 4));
+    irRow.removeFromLeft (8);
+    clearIRButton.setBounds (irRow);
+}
+
+// put the mic at a point on the cab: it goes on the nearest speaker, at that distance from its centre
+void CabPage::placeMicAt (juce::Point<float> p)
+{
+    int best = mikedSpeaker();
+    float bestD = 1.0e9f;
+    for (int i = 0; i < speakerCount(); ++i)
+    {
+        const float d = p.getDistanceFrom (speakerCentreAt (i));
+        if (d < bestD) { bestD = d; best = i; }
+    }
+    const auto c = speakerCentreAt (best);
+    const auto d = p - c;
+    if (d.getDistanceFromOrigin() > 2.0f) micAngle = std::atan2 (d.y, d.x);
+    if (best != mikedSpeaker())
+        if (auto* prm = param ("micSpeaker"))
+            prm->setValueNotifyingHost (prm->convertTo0to1 ((float) (best + 1)));
+    if (auto* prm = param ("micPos"))
+        prm->setValueNotifyingHost (prm->convertTo0to1 (juce::jlimit (0.0f, 1.0f, d.getDistanceFromOrigin() / (speakerRadius() * 0.95f))));
+    refresh();
+}
+
+juce::Point<float> CabPage::micPoint() const
+{
+    return speakerCentre() + juce::Point<float> (std::cos (micAngle), std::sin (micAngle)) * (juce::jlimit (0.0f, 1.0f, value ("micPos")) * speakerRadius() * 0.95f);
+}
+
+void CabPage::mouseDown (const juce::MouseEvent& e)
+{
+    if (shownIR || ! shownOn) return;
+    bool onASpeaker = false;
+    for (int i = 0; i < speakerCount(); ++i)
+        onASpeaker = onASpeaker || e.position.getDistanceFrom (speakerCentreAt (i)) < speakerRadius() * 1.1f;
+    if (! onASpeaker) return;
+    dragging = true;
+    for (auto* id : { "micPos", "micSpeaker" })
+        if (auto* prm = param (id)) prm->beginChangeGesture();
+    placeMicAt (e.position);   // click anywhere on a speaker: the mic goes there
+}
+
+void CabPage::mouseDrag (const juce::MouseEvent& e)
+{
+    if (! dragging) return;
+    placeMicAt (e.position);   // drag across the cab: it hops to whichever speaker you're over
+}
+
+void CabPage::mouseUp (const juce::MouseEvent&)
+{
+    if (! dragging) return;
+    dragging = false;
+    for (auto* id : { "micPos", "micSpeaker" })
+        if (auto* prm = param (id)) prm->endChangeGesture();
+    repaint (cabView.expanded (30));
+}
+
+void CabPage::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& w)
+{
+    if (shownIR || ! cabView.contains (e.getPosition())) return;
+    const float speed = w.isSmooth ? 0.9f : 0.45f;   // trackpads: many tiny steps; wheels: a few big ones
+    // sideways (trackpad swipe, or Shift + wheel): slide the mic left / right across the whole cab
+    const float sideways = e.mods.isShiftDown() ? w.deltaY : w.deltaX;
+    if (std::abs (sideways) > std::abs (e.mods.isShiftDown() ? 0.0f : w.deltaY))
+    {
+        auto p = micPoint();
+        p.x = juce::jlimit ((float) cabView.getX() + 50.0f, (float) cabView.getRight() - 50.0f, p.x - sideways * speed * 260.0f);
+        placeMicAt (p);
+        return;
+    }
+    // up / down: closer or further (the drawn mic glides there, see timerCallback)
+    const float step = speed * w.deltaY * (w.isReversed ? -1.0f : 1.0f);
+    if (auto* prm = param ("micDist"))
+    {
+        prm->beginChangeGesture();
+        prm->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, value ("micDist") - step));
+        prm->endChangeGesture();
+    }
+}
+
+//==============================================================================
+EqPage::EqPage (EmberAmpProcessor& p) : proc (p)
+{
+    const char* topIds[]   = { "eqLowCut", "eqFreq1", "eqFreq2", "eqFreq3", "eqFreq4", "eqHighCut" };
+    const char* topNames[] = { "Low Cut", "Low", "Low Mid", "High Mid", "High", "High Cut" };
+    for (int i = 0; i < 6; ++i)
+        addAndMakeVisible (topKnobs.add (new Knob (p.apvts, topIds[i], topNames[i], Palette::accent, "clay", Palette::text, 9.5f)));
+    for (int b = 0; b < 4; ++b)
+        addAndMakeVisible (gainKnobs.add (new Knob (p.apvts, "eqGain" + juce::String (b + 1), "Gain", Palette::accent, "clay", Palette::text, 9.5f)));
+    power.getProperties().set ("vswitch", true);
+    power.getProperties().set ("topText", "ON");
+    power.getProperties().set ("bottomText", "OFF");
+    power.getProperties().set ("onIsTop", true);
+    power.setTooltip ("Post EQ on / off (after the amp and cab)");
+    addAndMakeVisible (power);
+    powerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "eqOn", power);
+    refresh();
+}
+
+void EqPage::refresh()
+{
+    // the unit takes the colour of the amp you hear: white, ivory, black or blue
+    const int a = proc.getSelectedAmp();
+    if (a != amp)
+    {
+        amp = a;
+        const bool light = a <= EmberAmpProcessor::crunch;
+        const auto ink = light ? juce::Colour (0xff2b2d33) : juce::Colour (0xffe3e5ea);
+        for (auto* ks : { &topKnobs, &gainKnobs })
+            for (auto* k : *ks)
+            {
+                k->getSlider().getProperties().set ("lightPanel", light);
+                k->getSlider().getProperties().set ("knobLight", ! light ? juce::var (false) : juce::var (true));
+                k->getSlider().setColour (juce::Slider::textBoxTextColourId, ink);
+                k->getLabel().setColour (juce::Label::textColourId, ink.withAlpha (0.85f));
+                k->getSlider().repaint();
+            }
+        power.getProperties().set ("darkText", light);
+        power.repaint();
+        repaint();
+    }
+    // redraw the curve when any EQ setting moves
+    float sig = proc.apvts.getRawParameterValue ("eqOn")->load() * 7.0f;
+    for (auto* id : { "eqLowCut", "eqHighCut", "eqFreq1", "eqFreq2", "eqFreq3", "eqFreq4", "eqGain1", "eqGain2", "eqGain3", "eqGain4" })
+        sig = sig * 1.37f + proc.apvts.getRawParameterValue (id)->load();
+    if (sig != lastSig) { lastSig = sig; repaint (curveArea.expanded (4)); }
+}
+
+void EqPage::paint (juce::Graphics& g)
+{
+    using namespace juce;
+    const bool on = power.getToggleState();
+    const auto accent = EmberAmpEditor::ampAccent (amp);
+
+    // ---- response curve
+    const auto ca = curveArea.toFloat();
+    g.setColour (Colour (0xff0b0c10).withAlpha (0.8f));
+    g.fillRoundedRectangle (ca, 10.0f);
+    g.setColour (Colours::white.withAlpha (0.08f));
+    g.drawRoundedRectangle (ca.reduced (0.5f), 10.0f, 1.0f);
+    auto xFor = [this] (double hz) { return xForHz (hz); };
+    auto yFor = [this] (float db) { return yForDb (db); };
+    const double nyquist = 0.5 * (proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000.0);
+    g.setFont (spaced (9.0f, false, 0.1f));
+    for (double hz : { 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0 })
+    {
+        g.setColour (Colours::white.withAlpha (0.06f));
+        g.drawVerticalLine ((int) xFor (hz), plot.getY(), plot.getBottom());
+        g.setColour (Palette::muted);
+        g.drawText (hz >= 1000.0 ? String ((int) (hz / 1000.0)) + "k" : String ((int) hz), Rectangle<float> (40.0f, 12.0f).withCentre ({ xFor (hz), plot.getBottom() + 8.0f }), Justification::centred);
+    }
+    for (float db : { -12.0f, -6.0f, 0.0f, 6.0f, 12.0f })
+    {
+        g.setColour (Colours::white.withAlpha (db == 0.0f ? 0.16f : 0.06f));
+        g.drawHorizontalLine ((int) yFor (db), plot.getX(), plot.getRight());
+        g.setColour (Palette::muted);
+        g.drawText ((db > 0 ? "+" : "") + String ((int) db), Rectangle<float> (30.0f, 12.0f).withPosition (ca.getX() + 6.0f, yFor (db) - 6.0f), Justification::centredLeft);
+    }
+    // only up to the highest frequency your audio device can carry (above that, nothing exists to EQ)
+    const double topHz = jmin (20000.0, nyquist * 0.98);
+    if (topHz < 19000.0)
+    {
+        g.setColour (Colours::white.withAlpha (0.04f));
+        g.fillRect (Rectangle<float> (xFor (topHz), plot.getY(), plot.getRight() - xFor (topHz), plot.getHeight()));
+        g.setColour (Palette::muted);
+        g.setFont (spaced (9.0f, false, 0.1f));
+        g.drawFittedText ("above " + String (roundToInt (nyquist / 1000.0)) + " kHz: your audio device's limit",
+                          Rectangle<float> (xFor (topHz) + 6.0f, plot.getY() + 4.0f, plot.getRight() - xFor (topHz) - 8.0f, 30.0f).toNearestInt(), Justification::topLeft, 2);
+    }
+    Path curve, fill;
+    for (int i = 0; i <= 240; ++i)
+    {
+        const double hz = 20.0 * std::pow (topHz / 20.0, (double) i / 240.0);
+        const float x = xFor (hz), y = yFor (proc.getEqResponseDb (hz));
+        if (i == 0) { curve.startNewSubPath (x, y); fill.startNewSubPath (x, yFor (0.0f)); fill.lineTo (x, y); }
+        else        { curve.lineTo (x, y); fill.lineTo (x, y); }
+    }
+    fill.lineTo (xFor (topHz), yFor (0.0f));
+    fill.closeSubPath();
+    const auto curveCol = on ? accent : Palette::muted;
+    g.setColour (curveCol.withAlpha (0.15f));
+    g.fillPath (fill);
+    g.setColour (curveCol.withAlpha (on ? 1.0f : 0.6f));
+    g.strokePath (curve, PathStrokeType (2.0f, PathStrokeType::curved, PathStrokeType::rounded));
+    // band handles
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto pt = handleFor (b);
+        g.setColour (Colours::black.withAlpha (0.6f));
+        g.fillEllipse (Rectangle<float> (18.0f, 18.0f).withCentre (pt));
+        g.setColour (b == dragBand ? Colours::white : curveCol);
+        if (b == dragBand) g.fillEllipse (Rectangle<float> (16.0f, 16.0f).withCentre (pt).reduced (5.0f));
+        g.drawEllipse (Rectangle<float> (16.0f, 16.0f).withCentre (pt), b == dragBand ? 2.0f : 1.5f);
+        g.setFont (spaced (9.0f, true, 0.0f));
+        g.drawText (String (b + 1), Rectangle<float> (14.0f, 14.0f).withCentre (pt), Justification::centred);
+    }
+    if (! on)
+    {
+        g.setColour (Palette::muted);
+        g.setFont (spaced (11.0f, true, 0.25f));
+        g.drawText ("EQ OFF", ca.reduced (14.0f, 8.0f), Justification::topRight);
+    }
+
+    // ---- the rack unit: sculpted like the amps, colour follows the live amp
+    const auto u = unit.toFloat();
+    const Colour cols[][3] = { { Colour (0xfff3f4f6), Colour (0xffc9ccd1), Colour (0xffe4e6e9) },    // white
+                               { Colour (0xfff0e9dd), Colour (0xffc9bfad), Colour (0xffe2dacb) },    // ivory
+                               { Colour (0xff3a3c42), Colour (0xff141517), Colour (0xff24262a) },    // black
+                               { Colour (0xff36407a), Colour (0xff141a3a), Colour (0xff232b57) } };  // blue
+    const auto& c = cols[jlimit (0, 3, amp)];
+    const bool light = amp <= EmberAmpProcessor::crunch;
+    // feet + shadow
+    for (float fx : { u.getX() + 60.0f, u.getRight() - 120.0f })
+    {
+        g.setGradientFill (ColourGradient (Colour (0xff3a3d46), fx, u.getBottom(), Colour (0xff111216), fx, u.getBottom() + 16.0f, false));
+        g.fillRoundedRectangle (fx, u.getBottom() - 6.0f, 60.0f, 20.0f, 5.0f);
+    }
+    g.setColour (Colours::black.withAlpha (0.5f));
+    g.fillRoundedRectangle (u.translated (0.0f, 6.0f), 16.0f);
+    g.setGradientFill (ColourGradient (c[0], u.getX(), u.getY(), c[1], u.getX(), u.getBottom(), false));
+    g.fillRoundedRectangle (u, 16.0f);
+    g.setColour (Colours::white.withAlpha (light ? 0.7f : 0.15f));
+    g.drawRoundedRectangle (u.reduced (1.0f), 15.0f, 1.5f);
+    // recessed face
+    const auto f = face.toFloat();
+    g.setColour (Colours::black.withAlpha (light ? 0.2f : 0.55f));
+    g.fillRoundedRectangle (f.expanded (1.5f), 6.0f);
+    g.setGradientFill (ColourGradient (c[2], f.getX(), f.getY(), c[2].darker (0.12f), f.getX(), f.getBottom(), false));
+    g.fillRoundedRectangle (f, 6.0f);
+    // a groove between the two knob rows
+    g.setColour (Colours::black.withAlpha (light ? 0.12f : 0.4f));
+    g.drawHorizontalLine ((int) f.getCentreY() - 6, f.getX() + 110.0f, f.getRight() - 130.0f);
+    g.setColour (Colours::white.withAlpha (light ? 0.7f : 0.06f));
+    g.drawHorizontalLine ((int) f.getCentreY() - 5, f.getX() + 110.0f, f.getRight() - 130.0f);
+    // name + LEDs on the right
+    const auto ink = light ? Colour (0xff2b2d33) : Colour (0xffe3e5ea);
+    g.setColour (ink.withAlpha (0.85f));
+    g.setFont (spaced (14.0f, true, 0.5f));
+    g.drawText ("EMBER", Rectangle<float> (f.getRight() - 120.0f, f.getCentreY() - 22.0f, 100.0f, 20.0f), Justification::centredLeft);
+    g.setColour (ink.withAlpha (0.55f));
+    g.setFont (spaced (9.0f, false, 0.5f));
+    g.drawText ("4-BAND EQ", Rectangle<float> (f.getRight() - 120.0f, f.getCentreY(), 100.0f, 14.0f), Justification::centredLeft);
+    for (int i = 0; i < 3; ++i)
+    {
+        const auto led = Point<float> (f.getRight() - 112.0f + (float) i * 10.0f, f.getCentreY() + 26.0f);
+        if (on) { g.setColour (accent.withAlpha (0.35f)); g.fillEllipse (Rectangle<float> (10.0f, 10.0f).withCentre (led)); }
+        g.setColour (on ? accent.brighter (0.4f) : ink.withAlpha (0.25f));
+        g.fillEllipse (Rectangle<float> (4.5f, 4.5f).withCentre (led));
+    }
+}
+
+float EqPage::xForHz (double hz) const   { return plot.getX() + plot.getWidth() * (float) (std::log (juce::jmax (20.0, hz) / 20.0) / std::log (1000.0)); }
+double EqPage::hzForX (float x) const    { return 20.0 * std::pow (1000.0, (double) juce::jlimit (0.0f, 1.0f, (x - plot.getX()) / plot.getWidth())); }
+float EqPage::yForDb (float db) const    { return juce::jmap (juce::jlimit (-15.0f, 15.0f, db), 15.0f, -15.0f, plot.getY(), plot.getBottom()); }
+float EqPage::dbForY (float y) const     { return juce::jmap (y, plot.getY(), plot.getBottom(), 15.0f, -15.0f); }
+
+// each band's handle sits on its own gain at its frequency
+juce::Point<float> EqPage::handleFor (int b) const
+{
+    const auto n = juce::String (b + 1);
+    return { xForHz (proc.apvts.getRawParameterValue ("eqFreq" + n)->load()), yForDb (proc.apvts.getRawParameterValue ("eqGain" + n)->load()) };
+}
+
+void EqPage::mouseDown (const juce::MouseEvent& e)
+{
+    if (! curveArea.contains (e.getPosition())) return;
+    // grab the nearest handle (or, if none is close, the band whose range the click is in)
+    float best = 1.0e9f;
+    dragBand = -1;
+    for (int b = 0; b < 4; ++b)
+    {
+        const float d = e.position.getDistanceFrom (handleFor (b));
+        if (d < best) { best = d; dragBand = b; }
+    }
+    if (best > 28.0f)
+    {
+        const double hz = hzForX (e.position.x);
+        for (int b = 0; b < 4; ++b)
+            if (hz >= EmberAmpProcessor::eqBandMinHz[b] && hz <= EmberAmpProcessor::eqBandMaxHz[b]) { dragBand = b; break; }
+    }
+    if (dragBand < 0) return;
+    for (auto* id : { "eqFreq", "eqGain" })
+        if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->beginChangeGesture();
+    if (auto* on = proc.apvts.getParameter ("eqOn"); on != nullptr && on->getValue() < 0.5f)
+        on->setValueNotifyingHost (1.0f);   // touching the graph switches the EQ on
+    mouseDrag (e);
+}
+
+void EqPage::mouseDrag (const juce::MouseEvent& e)
+{
+    if (dragBand < 0) return;
+    const auto n = juce::String (dragBand + 1);
+    if (auto* f = proc.apvts.getParameter ("eqFreq" + n))
+        f->setValueNotifyingHost (f->convertTo0to1 ((float) juce::jlimit ((double) EmberAmpProcessor::eqBandMinHz[dragBand], (double) EmberAmpProcessor::eqBandMaxHz[dragBand], hzForX (e.position.x))));
+    if (auto* gn = proc.apvts.getParameter ("eqGain" + n))
+        gn->setValueNotifyingHost (gn->convertTo0to1 (juce::jlimit (-12.0f, 12.0f, dbForY (e.position.y))));
+    refresh();
+}
+
+void EqPage::mouseUp (const juce::MouseEvent&)
+{
+    if (dragBand < 0) return;
+    for (auto* id : { "eqFreq", "eqGain" })
+        if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->endChangeGesture();
+    dragBand = -1;
+    repaint (curveArea.expanded (4));
+}
+
+void EqPage::mouseDoubleClick (const juce::MouseEvent& e)
+{
+    for (int b = 0; b < 4; ++b)
+        if (e.position.getDistanceFrom (handleFor (b)) < 16.0f)
+            if (auto* gn = proc.apvts.getParameter ("eqGain" + juce::String (b + 1)))
+                gn->setValueNotifyingHost (gn->convertTo0to1 (0.0f));   // double-click a handle: back to 0 dB
+    refresh();
+}
+
+void EqPage::resized()
+{
+    auto r = getLocalBounds().reduced (40, 10);
+    curveArea = r.removeFromTop (juce::jmin (200, r.getHeight() / 3));
+    plot = curveArea.toFloat().reduced (40.0f, 16.0f);
+    r.removeFromTop (30);
+    unit = r.withSizeKeepingCentre (juce::jmin (r.getWidth(), 1040), juce::jmin (r.getHeight() - 24, 300));
+    face = unit.reduced (22, 20);
+
+    auto inner = face.reduced (10, 10);
+    power.setBounds (inner.removeFromLeft (96).withSizeKeepingCentre (84, 56));
+    inner.removeFromRight (130);
+    const int colW = inner.getWidth() / 6;
+    auto topRow = inner.removeFromTop (inner.getHeight() / 2);
+    for (int i = 0; i < 6; ++i)
+        topKnobs[i]->setBounds (topRow.withX (inner.getX() + i * colW).withWidth (colW).reduced (6, 2));
+    // big gain knobs, each under its band's frequency knob
+    for (int b = 0; b < 4; ++b)
+        gainKnobs[b]->setBounds (inner.withX (inner.getX() + (b + 1) * colW).withWidth (colW).reduced (2, 0));
+}
+
+//==============================================================================
 EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
     : AudioProcessorEditor (p), proc (p),
       inputKnob     (p.apvts, "input",  "Input",     juce::Colours::white, "ring", Palette::text, 13.0f),
@@ -1218,13 +2067,14 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
     setLookAndFeel (&lnf);
 
     // ---- navigation
-    const char* tabNames[] = { "PEDALS", "CLEAN", "CRUNCH", "DISTORTION", "SOLO" };
-    for (int i = 0; i < 1 + EmberAmpProcessor::numAmps; ++i)
+    const char* tabNames[] = { "PEDALS", "CLEAN", "CRUNCH", "DISTORTION", "SOLO", "CAB", "EQ" };
+    for (int i = 0; i < 3 + EmberAmpProcessor::numAmps; ++i)
     {
         auto& t = tabs[i];
         t.setButtonText (tabNames[i]);
         t.getProperties().set ("tab", true);
-        setAccent (t, i == 0 ? Palette::accent : ampAccent (i - 1));
+        t.getProperties().set ("icon", i == 0 ? "pedal" : i == cabPageIndex ? "cab" : i == eqPageIndex ? "eq" : "amp");
+        setAccent (t, i == 0 || i >= cabPageIndex ? Palette::accent : ampAccent (i - 1));
         t.onClick = [this, i] { showPage (i); };
         addAndMakeVisible (t);
     }
@@ -1236,6 +2086,10 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
         ampPages[a] = std::make_unique<AmpPage> (*this, p, a);
         addChildComponent (*ampPages[a]);
     }
+    cabPage = std::make_unique<CabPage> (*this, p);
+    addChildComponent (*cabPage);
+    eqPage = std::make_unique<EqPage> (p);
+    addChildComponent (*eqPage);
 
     // ---- top control strip
     for (auto* c : std::initializer_list<juce::Component*> { &inMeter, &outMeter, &inputKnob, &gateKnob, &transposeKnob, &outputKnob,
@@ -1248,11 +2102,46 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
     transposeSwitch.setTooltip ("Pitch shifter (same as the Pitch pedal)");
     gateSwitch.setTooltip ("Noise gate (same as the Gate pedal)");
 
-    prevPreset.setButtonText (juce::String::fromUTF8 ("\xe2\x86\x90"));
-    nextPreset.setButtonText (juce::String::fromUTF8 ("\xe2\x86\x92"));
-    for (auto* b : { &prevPreset, &nextPreset, &savePresetButton })
+    // stereo / mono and the doubler
+    monoSwitch.getProperties().set ("vswitch", true);
+    monoSwitch.getProperties().set ("topText", "STEREO");
+    monoSwitch.getProperties().set ("bottomText", "MONO");
+    monoSwitch.getProperties().set ("onIsTop", false);
+    monoSwitch.setTooltip ("Stereo: the doubler, chorus, delay and reverb spread wide.  Mono: everything in the centre");
+    doublerSwitch.getProperties().set ("vswitch", true);
+    doublerSwitch.getProperties().set ("topText", "ON");
+    doublerSwitch.getProperties().set ("bottomText", "OFF");
+    doublerSwitch.getProperties().set ("onIsTop", true);
+    doublerSwitch.setTooltip ("Doubler: a second take on the right side, for a wide double-tracked sound");
+    dynamicsSwitch.getProperties().set ("vswitch", true);
+    dynamicsSwitch.getProperties().set ("topText", "ON");
+    dynamicsSwitch.getProperties().set ("bottomText", "OFF");
+    dynamicsSwitch.getProperties().set ("onIsTop", true);
+    for (auto* b : { &monoSwitch, &doublerSwitch }) addAndMakeVisible (b);
+    monoAtt    = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "monoOut", monoSwitch);
+    doublerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "doublerOn", doublerSwitch);
+    spreadKnob = std::make_unique<Knob> (p.apvts, "doublerSpread", "Spread", juce::Colours::white, "ring", Palette::text, 9.5f);
+    addAndMakeVisible (*spreadKnob);
+
+    // presets: icons, arrows
+    prevPreset.getProperties().set ("iconOnly", "left");
+    nextPreset.getProperties().set ("iconOnly", "right");
+    savePresetButton.getProperties().set ("iconOnly", "save");
+    presetDeleteIcon.getProperties().set ("iconOnly", "trash");
+    presetImportIcon.getProperties().set ("iconOnly", "import");
+    presetSearchIcon.getProperties().set ("iconOnly", "search");
+    savePresetButton.setTooltip ("Save as a new preset");
+    presetDeleteIcon.setTooltip ("Delete this preset (your own presets only)");
+    presetImportIcon.setTooltip ("Import a preset file");
+    presetSearchIcon.setTooltip ("Browse all presets");
+    prevPreset.setTooltip ("Previous preset");
+    nextPreset.setTooltip ("Next preset");
+    presetDeleteIcon.onClick = [this] { deleteCurrentPreset(); };
+    presetImportIcon.onClick = [this] { importPreset(); };
+    presetSearchIcon.onClick = [this] { presetBox.showPopup(); };
+    for (auto* b : { &prevPreset, &nextPreset, &savePresetButton, &presetDeleteIcon, &presetImportIcon, &presetSearchIcon })
     {
-        b->getProperties().set ("link", true);
+        b->setButtonText ({});
         addAndMakeVisible (b);
     }
     prevPreset.onClick = [this] { stepPreset (-1); };
@@ -1399,19 +2288,23 @@ EmberAmpEditor::~EmberAmpEditor()
 //==============================================================================
 void EmberAmpEditor::showPage (int page)
 {
-    currentPage = juce::jlimit (0, (int) EmberAmpProcessor::numAmps, page);
+    currentPage = juce::jlimit (0, (int) eqPageIndex, page);
     pedalsPage.setVisible (currentPage == 0);
     for (int a = 0; a < EmberAmpProcessor::numAmps; ++a)
         ampPages[a]->setVisible (currentPage == a + 1);
+    cabPage->setVisible (currentPage == cabPageIndex);
+    eqPage->setVisible (currentPage == eqPageIndex);
+    if (currentPage == eqPageIndex) eqPage->refresh();
+    if (currentPage == cabPageIndex) cabPage->refresh();
 
     // opening another amp's page makes it the amp you hear, starting on its preset 1
-    if (currentPage > 0 && proc.getSelectedAmp() != currentPage - 1)
+    if (isAmpPage() && proc.getSelectedAmp() != currentPage - 1)
     {
         proc.setCurrentProgram ((currentPage - 1) * EmberAmpProcessor::presetsPerAmp);
         presetsChanged();
     }
 
-    for (int i = 0; i < 1 + EmberAmpProcessor::numAmps; ++i)
+    for (int i = 0; i < 3 + EmberAmpProcessor::numAmps; ++i)
         tabs[i].setToggleState (i == currentPage, juce::dontSendNotification);
     repaint();
 }
@@ -1421,7 +2314,8 @@ void EmberAmpEditor::presetsChanged()
     rebuildPresetMenu();
     for (auto& page : ampPages) page->refresh();
     pedalsPage.refresh();
-    if (currentPage > 0 && proc.getSelectedAmp() != currentPage - 1)
+    cabPage->refresh();
+    if (isAmpPage() && proc.getSelectedAmp() != currentPage - 1)
         showPage (1 + proc.getSelectedAmp());
 }
 
@@ -1509,6 +2403,20 @@ void EmberAmpEditor::paint (juce::Graphics& g)
     for (auto& d : dividers)
         g.fillRect (d);
 
+    // headings: MODE, DOUBLER (with rules either side, spanning the switch and Spread), PRESETS, DYNAMICS
+    g.setFont (spaced (12.0f, true, 0.12f));
+    g.setColour (Palette::text);
+    for (auto [area, text] : { std::pair<juce::Rectangle<int>, const char*> { modeHead, "MODE" }, { presetsHead, "PRESETS" }, { dynamicsHead, "DYNAMICS" } })
+        g.drawText (text, area, Justification::centred);
+    {
+        const auto hd = doublerHead.toFloat();
+        const float tw = (float) GlyphArrangement::getStringWidthInt (spaced (12.0f, true, 0.12f), "DOUBLER") + 16.0f;
+        g.drawText ("DOUBLER", hd, Justification::centred);
+        g.setColour (Colours::white.withAlpha (0.4f));
+        g.drawHorizontalLine ((int) hd.getCentreY(), hd.getX() + 4.0f, hd.getCentreX() - tw * 0.5f);
+        g.drawHorizontalLine ((int) hd.getCentreY(), hd.getCentreX() + tw * 0.5f, hd.getRight() - 4.0f);
+    }
+
     // status bar
     const auto sb = statusArea.toFloat();
     g.setColour (Colour (0xff050506));
@@ -1523,7 +2431,7 @@ void EmberAmpEditor::paint (juce::Graphics& g)
 void EmberAmpEditor::paintOverChildren (juce::Graphics& g)
 {
     if (! dragHover) return;
-    const int amp = currentPage > 0 ? currentPage - 1 : proc.getSelectedAmp();
+    const int amp = isAmpPage() ? currentPage - 1 : proc.getSelectedAmp();
     auto r = getLocalBounds().toFloat().reduced (6.0f);
     g.setColour (Palette::bg.withAlpha (0.82f));
     g.fillRoundedRectangle (r, 12.0f);
@@ -1538,52 +2446,75 @@ void EmberAmpEditor::resized()
     auto area = getLocalBounds();
 
     // ---- navigation
-    auto nav = area.removeFromTop (58);
-    const int tabW = 120;
-    auto tabRow = nav.withSizeKeepingCentre (tabW * 5, 44).translated (0, 4);
+    auto nav = area.removeFromTop (62);
+    const int tabW = 84;
+    auto tabRow = nav.withSizeKeepingCentre (tabW * (int) std::size (tabs), 54).translated (0, 4);
     for (auto& t : tabs)
         t.setBounds (tabRow.removeFromLeft (tabW));
 
-    // ---- control strip
-    auto strip = area.removeFromTop (124).reduced (24, 6);
+    // ---- control strip:  INPUT | GATE  TRANSPOSE | MODE | DOUBLER | PRESETS | DYNAMICS | OUTPUT
+    auto strip = area.removeFromTop (124).reduced (20, 6);
     dividers.clear();
     inMeter.setBounds (strip.removeFromLeft (6).reduced (0, 8));
-    strip.removeFromLeft (14);
-    inputKnob.setBounds (strip.removeFromLeft (96));
-    strip.removeFromLeft (14);
+    strip.removeFromLeft (8);
+    inputKnob.setBounds (strip.removeFromLeft (100));
+    strip.removeFromLeft (8);
     dividers.push_back (strip.removeFromLeft (1).reduced (0, 14));
-    strip.removeFromLeft (14);
+    strip.removeFromLeft (8);
     {
-        auto col = strip.removeFromLeft (110);
-        gateSwitch.setBounds (col.removeFromTop (22).withSizeKeepingCentre (100, 22));
+        auto col = strip.removeFromLeft (92);
+        gateSwitch.setBounds (col.removeFromTop (22).withSizeKeepingCentre (92, 22));
         gateKnob.setBounds (col.translated (0, -18).withTrimmedBottom (-18));
     }
-    strip.removeFromLeft (12);
+    strip.removeFromLeft (2);
     {
-        auto col = strip.removeFromLeft (140);
-        transposeSwitch.setBounds (col.removeFromTop (22).withSizeKeepingCentre (138, 22));
-        transposeKnob.setBounds (col.translated (0, -18).withTrimmedBottom (-18).withSizeKeepingCentre (110, col.getHeight() + 18));
+        auto col = strip.removeFromLeft (136);
+        transposeSwitch.setBounds (col.removeFromTop (22).withSizeKeepingCentre (136, 22));
+        transposeKnob.setBounds (col.translated (0, -18).withTrimmedBottom (-18).withSizeKeepingCentre (100, col.getHeight() + 18));
+    }
+    strip.removeFromLeft (8);
+    {
+        auto col = strip.removeFromLeft (84);
+        modeHead = col.removeFromTop (22);
+        monoSwitch.setBounds (col.withSizeKeepingCentre (84, 56).translated (0, -4));
+    }
+    strip.removeFromLeft (8);
+    {
+        auto col = strip.removeFromLeft (150);
+        doublerHead = col.removeFromTop (22);
+        doublerSwitch.setBounds (col.removeFromLeft (64).withSizeKeepingCentre (64, 56).translated (0, -4));
+        spreadKnob->setBounds (col.withTrimmedBottom (-8).reduced (4, 0));
     }
 
     auto right = strip.removeFromRight (6);
     outMeter.setBounds (right.reduced (0, 8));
-    strip.removeFromRight (14);
-    outputKnob.setBounds (strip.removeFromRight (96));
-    strip.removeFromRight (14);
+    strip.removeFromRight (8);
+    outputKnob.setBounds (strip.removeFromRight (100));
+    strip.removeFromRight (8);
     dividers.push_back (strip.removeFromRight (1).reduced (0, 14));
-    strip.removeFromRight (14);
-    dynamicsSwitch.setBounds (strip.removeFromRight (130).withSizeKeepingCentre (130, 26).translated (0, -24));
-    strip.removeFromRight (20);
-
-    // centre: preset arrows + save, then the preset menu
+    strip.removeFromRight (8);
     {
-        auto centre = strip.reduced (10, 0);
-        auto top = centre.removeFromTop (30);
-        prevPreset.setBounds (top.removeFromLeft (36));
-        nextPreset.setBounds (top.removeFromLeft (36));
-        savePresetButton.setBounds (top.removeFromRight (96));
-        centre.removeFromTop (8);
-        presetBox.setBounds (centre.removeFromTop (48));
+        auto col = strip.removeFromRight (82);
+        dynamicsHead = col.removeFromTop (22);
+        dynamicsSwitch.setBounds (col.withSizeKeepingCentre (82, 56).translated (0, -4));
+    }
+    strip.removeFromRight (8);
+
+    // presets: heading, icon row, then  <  menu  >
+    {
+        auto centre = strip;
+        presetsHead = centre.removeFromTop (22);
+        auto icons = centre.removeFromTop (30).withSizeKeepingCentre (4 * 34 + 3 * 14, 30);
+        for (auto* b : { &savePresetButton, &presetDeleteIcon, &presetImportIcon, &presetSearchIcon })
+        {
+            b->setBounds (icons.removeFromLeft (34));
+            icons.removeFromLeft (14);
+        }
+        centre.removeFromTop (4);
+        auto row = centre.removeFromTop (40);
+        prevPreset.setBounds (row.removeFromLeft (30));
+        nextPreset.setBounds (row.removeFromRight (30));
+        presetBox.setBounds (row.reduced (4, 2));
     }
 
     // ---- status bar
@@ -1615,6 +2546,8 @@ void EmberAmpEditor::resized()
     pedalsPage.setBounds (stageArea.reduced (20, 10));
     for (auto& page : ampPages)
         page->setBounds (stageArea);
+    cabPage->setBounds (stageArea);
+    eqPage->setBounds (stageArea);
 }
 
 //==============================================================================
@@ -1629,7 +2562,7 @@ bool EmberAmpEditor::isInterestedInFileDrag (const juce::StringArray& files)
 void EmberAmpEditor::filesDropped (const juce::StringArray& files, int, int)
 {
     dragHover = false;
-    const int amp = currentPage > 0 ? currentPage - 1 : proc.getSelectedAmp();
+    const int amp = isAmpPage() ? currentPage - 1 : proc.getSelectedAmp();
     for (auto& f : files)
         if (proc.loadIR (amp, juce::File (f)))
             break;
@@ -1697,7 +2630,7 @@ bool EmberAmpEditor::keyPressed (const juce::KeyPress& key)
 {
     const auto c = key.getTextCharacter();
     if (c == 'm' || c == 'M') { muteButton.triggerClick(); return true; }
-    if (c >= '1' && c <= '5')  { showPage (c - '1'); return true; }   // 1 = pedals, 2..5 = amps
+    if (c >= '1' && c <= '7')  { showPage (c - '1'); return true; }   // 1 = pedals, 2..5 = amps, 6 = cab, 7 = eq
     return false;
 }
 
@@ -1769,6 +2702,27 @@ void EmberAmpEditor::stepPreset (int delta)
     if (pos < 0) pos = delta > 0 ? -1 : (int) ids.size();
     pos = (pos + delta + (int) ids.size()) % (int) ids.size();
     presetBox.setSelectedId (ids[(size_t) pos], juce::sendNotificationSync);
+}
+
+void EmberAmpEditor::deleteCurrentPreset()
+{
+    if (proc.getCurrentUserPreset().isEmpty()) return;
+    presetBox.setSelectedId (deletePresetId, juce::sendNotificationSync);   // same confirm-and-delete path as the menu
+}
+
+void EmberAmpEditor::importPreset()
+{
+    importChooser = std::make_unique<juce::FileChooser> ("Import an Ember Amp preset", juce::File::getSpecialLocation (juce::File::userHomeDirectory), "*.emberpreset");
+    juce::Component::SafePointer<EmberAmpEditor> safe (this);
+    importChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                                [safe] (const juce::FileChooser& fc)
+                                {
+                                    if (safe == nullptr || ! fc.getResult().existsAsFile()) return;
+                                    auto dest = EmberAmpProcessor::getUserPresetFolder().getChildFile (fc.getResult().getFileName()).getNonexistentSibling (false);
+                                    EmberAmpProcessor::getUserPresetFolder().createDirectory();
+                                    if (fc.getResult().copyFileTo (dest) && safe->proc.loadUserPreset (dest))
+                                        safe->presetsChanged();
+                                });
 }
 
 void EmberAmpEditor::presetChosen()
@@ -1930,18 +2884,21 @@ void EmberAmpEditor::timerCallback()
             tabs[a + 1].getProperties().set ("live", a == sel);
             tabs[a + 1].repaint();
         }
-        if (currentPage > 0 && currentPage - 1 != sel)
+        if (isAmpPage() && currentPage - 1 != sel)
             showPage (1 + sel);
         rebuildPresetMenu();
     }
 
     if (proc.getCurrentProgram() != lastProgramShown || proc.getCurrentUserPreset() != lastUserPresetShown)
         presetsChanged();
+    presetDeleteIcon.setEnabled (proc.getCurrentUserPreset().isNotEmpty());
 
     if (frameCounter % 6 == 0)
     {
         for (auto& page : ampPages) page->refresh();
         pedalsPage.refresh();
+        if (currentPage == cabPageIndex) cabPage->refresh();
+        if (currentPage == eqPageIndex) eqPage->refresh();
     }
 
    #if JucePlugin_Build_Standalone

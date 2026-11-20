@@ -461,6 +461,9 @@ EmberAmpProcessor::EmberAmpProcessor()
     pDsOn = raw ("dsOn"); pDsDist = raw ("dsDist"); pDsTone = raw ("dsTone"); pDsLevel = raw ("dsLevel");
     pPitchOn = raw ("pitchOn"); pPitch = raw ("pitch");  pPitchMix = raw ("pitchMix");
     pDelayOn = raw ("delayOn"); pDTime = raw ("delayTime"); pDFb = raw ("delayFeedback"); pDMix = raw ("delayMix");
+    pDoublerOn = raw ("doublerOn"); pDoublerSpread = raw ("doublerSpread"); pMonoOut = raw ("monoOut");
+    pEqOn = raw ("eqOn"); pEqLowCut = raw ("eqLowCut"); pEqHighCut = raw ("eqHighCut");
+    for (int b = 0; b < 4; ++b) { pEqFreq[b] = raw ("eqFreq" + juce::String (b + 1)); pEqGain[b] = raw ("eqGain" + juce::String (b + 1)); }
     pChorusOn = raw ("chorusOn"); pCRate = raw ("chorusRate"); pCDepth = raw ("chorusDepth"); pCMix = raw ("chorusMix");
     pRevOn = raw ("reverbOn");  pRSize = raw ("reverbSize"); pRMix = raw ("reverbMix");
 
@@ -469,7 +472,8 @@ EmberAmpProcessor::EmberAmpProcessor()
                      raw (ampParamID (a, "treble")), raw (ampParamID (a, "presence")), raw (ampParamID (a, "volume")),
                      raw (ampParamID (a, "cab")), raw (ampParamID (a, "sustain")),
                      a != clean ? raw (ampParamID (a, "drive")) : nullptr,
-                     raw (ampParamID (a, "cabModel")), raw (ampParamID (a, "mic")), raw (ampParamID (a, "micPos")), raw (ampParamID (a, "micDist")) };
+                     raw (ampParamID (a, "cabModel")), raw (ampParamID (a, "mic")), raw (ampParamID (a, "micPos")), raw (ampParamID (a, "micDist")),
+                     raw (ampParamID (a, "micSpeaker")) };
 
     for (auto& f : irActive) f = false;
 
@@ -536,6 +540,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "micDist"), 1 }, n + "Mic Distance", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.15f,
                          AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return String (roundToInt (v * 30.0f)) + " cm"; })
                                                         .withValueFromStringFunction ([] (const String& t) { return t.retainCharacters ("0123456789.").getFloatValue() / 30.0f; })));
+        p.push_back (std::make_unique<AudioParameterInt> (ParameterID { ampParamID (a, "micSpeaker"), 1 }, n + "Miked Speaker", 1, 4, 1));
         if (a != clean)   // Distortion has always had Drive; Crunch and Solo got it in 1.2 (starts at 0 = as before)
             p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "drive"), 1 }, n + "Drive", NormalisableRange<float> (0.0f, 1.0f, 0.001f),
                                                                 a == distortion ? 0.5f : 0.0f, pct));
@@ -546,6 +551,33 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "gate", 1 }, "Gate Threshold", NormalisableRange<float> (-96.0f, -20.0f, 0.5f), standardGateDb, gateA));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "compOn", 1 }, "Compressor On", false));
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "sustain", 1 }, "Sustain", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, pct));
+    // doubler and stereo / mono output (global, like Input and Output: presets leave them alone)
+    p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "doublerOn", 1 }, "Doubler", false));
+    p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "doublerSpread", 1 }, "Doubler Spread", NormalisableRange<float> (1.0f, 30.0f, 0.01f, 0.6f), 7.0f,
+                     AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return String (v, 2) + " ms"; })
+                                                    .withValueFromStringFunction ([] (const String& t) { return t.retainCharacters ("0123456789.").getFloatValue(); })));
+    p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "monoOut", 1 }, "Mono Output", true));   // starts in mono
+
+    // post EQ: off and flat by default
+    {
+        auto hz = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                  { return v >= 1000.0f ? String (v / 1000.0f, v >= 10000.0f ? 1 : 2) + " kHz" : String (roundToInt (v)) + " Hz"; });
+        auto gdb = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return (v > 0.05f ? "+" : "") + String (v, 1) + " dB"; });
+        auto logRange = [] (float lo, float hi, float centre) { NormalisableRange<float> r (lo, hi, 1.0f); r.setSkewForCentre (centre); return r; };
+        p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "eqOn", 1 }, "EQ On", false));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqLowCut", 1 }, "EQ Low Cut", logRange (20.0f, 300.0f, 80.0f), 20.0f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v < 21.0f ? String ("Off") : String (roundToInt (v)) + " Hz"; })));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqHighCut", 1 }, "EQ High Cut", logRange (2000.0f, 20000.0f, 7000.0f), 20000.0f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v > 19900.0f ? String ("Off") : String (v / 1000.0f, 1) + " kHz"; })));
+        for (int b = 0; b < 4; ++b)
+        {
+            const auto num = String (b + 1);
+            const float lo = EmberAmpProcessor::eqBandMinHz[b], hi = EmberAmpProcessor::eqBandMaxHz[b], def = EmberAmpProcessor::eqBandDefHz[b];
+            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqFreq" + num, 1 }, "EQ Band " + num + " Freq", logRange (lo, hi, def), def, hz));
+            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqGain" + num, 1 }, "EQ Band " + num + " Gain", NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f, gdb));
+        }
+    }
+
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "odOn", 1 }, "Overdrive On", false));
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "boost", 1 }, "Overdrive Drive", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, pct));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "dsOn", 1 }, "Distortion On", false));
@@ -692,7 +724,7 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
                      &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
-                     &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh })
+                     &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak })
         b->reset();
     std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
     reflPos = 0;
@@ -704,6 +736,25 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     ampVolume.setCurrentAndTargetValue (dB (knobs[activeAmp].volume->load()));
 
     for (auto& c : irConvolution) { c.prepare (monoSpec); c.reset(); }
+
+    for (auto* b : { &eqLowCut, &eqHighCut, &eqBand[0], &eqBand[1], &eqBand[2], &eqBand[3] }) b->reset();
+    {
+        int size = 1;
+        while (size < (int) (sampleRate * 0.045) + 8) size <<= 1;
+        dblBuf.assign ((size_t) size, 0.0f);
+        dblMask = size - 1;
+        dblPos = 0;
+        dblPhase = 0.0f;
+        dblWet.reset (sampleRate, 0.05);
+        dblWet.setCurrentAndTargetValue (pDoublerOn->load() > 0.5f ? 1.0f : 0.0f);
+        dblDelay.reset (sampleRate, 0.08);
+        dblDelay.setCurrentAndTargetValue (pDoublerSpread->load() * 0.001f * (float) sampleRate);
+        monoAmount.reset (sampleRate, 0.05);
+        monoAmount.setCurrentAndTargetValue (pMonoOut->load() > 0.5f ? 1.0f : 0.0f);
+    }
+    updateEq (true);
+    eqWet.reset (sampleRate, 0.03);
+    eqWet.setCurrentAndTargetValue (pEqOn->load() > 0.5f ? 1.0f : 0.0f);
 
     pitchShifter.prepare (sampleRate);
     pitchWet.reset (sampleRate, 0.03);
@@ -759,6 +810,7 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
     const auto sr = getSampleRate() > 0 ? (float) getSampleRate() : 44100.0f;
     const auto& k = knobs[amp];
     const float cabV = k.cabModel->load(), micV = k.mic->load(), posV = k.micPos->load(), distV = k.micDist->load();
+    const bool cabChanged = cabV != lastCabModel;
 
     if (force || cabV != lastCabModel)
     {
@@ -795,6 +847,23 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
                 break;
         }
     }
+    // which speaker: no two speakers in a cab sound quite the same; the bottom row couples with the floor
+    const int nSpk = speakersInCab (juce::roundToInt (cabV));
+    const float spkV = (float) juce::jlimit (1, nSpk, juce::roundToInt (k.micSpeaker->load()));
+    if (force || spkV != lastMicSpeaker || cabChanged)
+    {
+        lastMicSpeaker = spkV;
+        float lowDb = 0.0f, peakHz = 2800.0f, peakDb = 0.0f;
+        switch ((int) spkV)
+        {
+            case 2:  peakHz = 2800.0f; peakDb = 1.2f;  break;                    // a little brighter
+            case 3:  lowDb = 1.5f;     peakHz = 3500.0f; peakDb = -1.0f; break;  // bottom: fuller, softer top
+            case 4:  lowDb = 1.2f;     peakHz = 2200.0f; peakDb = 0.8f;  break;  // bottom: fuller, more bark
+            default: break;                                                      // speaker 1: the reference
+        }
+        micSpkLow.set  (Coeffs::makeLowShelf   (sr, 120.0f, 0.7f, dB (lowDb)));
+        micSpkPeak.set (Coeffs::makePeakFilter (sr, peakHz, 1.2f, dB (peakDb)));
+    }
     if (force || posV != lastMicPos)
     {
         lastMicPos = posV;
@@ -809,6 +878,42 @@ void EmberAmpProcessor::updateCabMic (int amp, bool force)
         reflGain  = 0.35f * far;
         reflDelay = juce::jmin ((float) reflBuf.size() - 2.0f, (0.0006f + 0.0024f * distV) * sr);
     }
+}
+
+// post EQ: band 1 is a low shelf, 2 and 3 are bells, 4 is a high shelf (semi-parametric: frequency + gain)
+void EmberAmpProcessor::updateEq (bool force)
+{
+    const auto sr = getSampleRate() > 0 ? (float) getSampleRate() : 44100.0f;
+    const float v[10] = { pEqLowCut->load(), pEqHighCut->load(), pEqFreq[0]->load(), pEqGain[0]->load(), pEqFreq[1]->load(), pEqGain[1]->load(),
+                          pEqFreq[2]->load(), pEqGain[2]->load(), pEqFreq[3]->load(), pEqGain[3]->load() };
+    bool changed = force;
+    for (int i = 0; i < 10; ++i) if (v[i] != eqLast[i]) { changed = true; eqLast[i] = v[i]; }
+    if (! changed) return;
+    eqLowCut.set  (Coeffs::makeHighPass (sr, juce::jmax (10.0f, v[0] < 21.0f ? 10.0f : v[0]), 0.707f));
+    eqHighCut.set (Coeffs::makeLowPass  (sr, juce::jmin (v[1], 0.45f * sr), 0.707f));
+    eqBand[0].set (Coeffs::makeLowShelf   (sr, v[2], 0.7f, dB (v[3])));
+    eqBand[1].set (Coeffs::makePeakFilter (sr, juce::jmin (v[4], 0.45f * sr), 0.9f, dB (v[5])));
+    eqBand[2].set (Coeffs::makePeakFilter (sr, juce::jmin (v[6], 0.45f * sr), 0.9f, dB (v[7])));
+    eqBand[3].set (Coeffs::makeHighShelf  (sr, juce::jmin (v[8], 0.4f * sr), 0.7f, dB (v[9])));
+}
+
+float EmberAmpProcessor::getEqResponseDb (double hz) const
+{
+    const double sr = getSampleRate() > 0 ? getSampleRate() : 48000.0;
+    const auto lc = pEqLowCut->load(), hc = pEqHighCut->load();
+    double mag = 1.0;
+    auto add = [&] (const std::array<float, 6>& c)
+    {
+        juce::dsp::IIR::Coefficients<float> co (c[0], c[1], c[2], c[3], c[4], c[5]);
+        mag *= co.getMagnitudeForFrequency (hz, sr);
+    };
+    if (lc >= 21.0f) add (Coeffs::makeHighPass (sr, lc, 0.707f));
+    if (hc <= 19900.0f) add (Coeffs::makeLowPass (sr, juce::jmin (hc, 0.45f * (float) sr), 0.707f));
+    add (Coeffs::makeLowShelf   (sr, pEqFreq[0]->load(), 0.7f, dB (pEqGain[0]->load())));
+    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[1]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[1]->load())));
+    add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[2]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[2]->load())));
+    add (Coeffs::makeHighShelf  (sr, juce::jmin (pEqFreq[3]->load(), 0.4f * (float) sr), 0.7f, dB (pEqGain[3]->load())));
+    return juce::Decibels::gainToDecibels ((float) mag, -60.0f);
 }
 
 void EmberAmpProcessor::updateFilters (int amp)
@@ -878,7 +983,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             activeAmp = want;
             for (auto* b : { &tight, &preEmphasis, &postVoicing, &postLows, &chunk, &fizz, &splitLp1, &splitLp2, &splitPost, &dynSmooth, &bass, &mid, &treble, &presence,
                              &cabHp, &cabLowRes, &cabScoop, &cabComb, &cabBite, &cabLp1, &cabLp2, &depth,
-                             &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh })
+                             &micA, &micB, &micPosShelf, &micDistLow, &micDistHigh, &micSpkLow, &micSpkPeak })
                 b->reset();
             std::fill (reflBuf.begin(), reflBuf.end(), 0.0f);
             setAmpVoicing (activeAmp);
@@ -1137,6 +1242,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             {
                 float y = cabLp2.process (cabLp1.process (cabBite.process (cabComb.process (cabScoop.process (cabLowRes.process (cabHp.process (x[i])))))));
                 y = micDistHigh.process (micDistLow.process (micPosShelf.process (micB.process (micA.process (y)))));
+                y = micSpkPeak.process (micSpkLow.process (y));
                 reflBuf[(size_t) reflPos] = y;
                 if (reflGain > 0.0f)
                     y += reflGain * reflBuf[(size_t) ((reflPos - rd) & rbMask)];
@@ -1151,12 +1257,58 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     for (int i = 0; i < n; ++i)
         x[i] = depth.process (x[i]) * ampVolume.getNextValue() * switchGain.getNextValue() * dynGain[(size_t) i];
 
+    // ===== Post EQ (crossfaded in/out so switching it never clicks) =====
+    eqWet.setTargetValue (pEqOn->load() > 0.5f ? 1.0f : 0.0f);
+    if (eqWet.isSmoothing() || eqWet.getTargetValue() > 0.0f)
+    {
+        updateEq (false);
+        for (int i = 0; i < n; ++i)
+        {
+            float y = eqLowCut.process (x[i]);
+            for (auto& b : eqBand) y = b.process (y);
+            y = eqHighCut.process (y);
+            const float w = eqWet.getNextValue();
+            x[i] += w * (y - x[i]);
+        }
+    }
+
     // --- Mono -> output channels, with fixed headroom so the amp sits well below 0 dBFS ---
     static const float headroom = dB (-14.0f);
     for (int c = 0; c < numOut; ++c)
     {
         buffer.copyFrom (c, 0, mono, 0, 0, n);
         buffer.applyGain (c, 0, n, headroom);
+    }
+
+    // ===== Doubler: the right side becomes a second "take": later by Spread, drifting slightly in pitch =====
+    dblWet.setTargetValue (pDoublerOn->load() > 0.5f ? 1.0f : 0.0f);
+    dblDelay.setTargetValue (pDoublerSpread->load() * 0.001f * (float) getSampleRate());
+    if (numOut > 1 && ! dblBuf.empty())
+    {
+        const bool active = dblWet.isSmoothing() || dblWet.getTargetValue() > 0.0f;
+        auto* L = buffer.getWritePointer (0);
+        auto* R = buffer.getWritePointer (1);
+        const float inc = juce::MathConstants<float>::twoPi * 0.31f / (float) getSampleRate();
+        const float depth = 0.0012f * (float) getSampleRate();   // +-1.2 ms of drift = a few cents of detune
+        for (int i = 0; i < n; ++i)
+        {
+            dblBuf[(size_t) dblPos] = L[i];
+            const float d = dblDelay.getNextValue();
+            if (active)
+            {
+                const float mod = depth * (0.5f + 0.5f * std::sin (dblPhase) * 0.6f + 0.4f * std::sin (2.3f * dblPhase + 1.0f) * 0.5f);
+                float rp = (float) dblPos - (d + mod);
+                while (rp < 0.0f) rp += (float) (dblMask + 1);
+                const int i0 = ((int) rp) & dblMask;
+                const float fr = rp - std::floor (rp);
+                const float delayed = dblBuf[(size_t) i0] + fr * (dblBuf[(size_t) ((i0 + 1) & dblMask)] - dblBuf[(size_t) i0]);
+                const float w = dblWet.getNextValue();
+                R[i] += w * (delayed - R[i]);
+            }
+            dblPhase += inc;
+            if (dblPhase > juce::MathConstants<float>::twoPi * 10.0f) dblPhase -= juce::MathConstants<float>::twoPi * 10.0f;
+            dblPos = (dblPos + 1) & dblMask;
+        }
     }
 
     // ===== Pedals after the amp: Chorus -> Delay -> Reverb =====
@@ -1186,6 +1338,20 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         reverb.setParameters (rp);
         auto outBlock = juce::dsp::AudioBlock<float> (buffer).getSubsetChannelBlock (0, (size_t) juce::jmin (numOut, 2));
         reverb.process (juce::dsp::ProcessContextReplacing<float> (outBlock));
+    }
+
+    // ===== Mono output: fold everything to the centre =====
+    monoAmount.setTargetValue (pMonoOut->load() > 0.5f ? 1.0f : 0.0f);
+    if (numOut > 1 && (monoAmount.isSmoothing() || monoAmount.getTargetValue() > 0.0f))
+    {
+        auto* L = buffer.getWritePointer (0);
+        auto* R = buffer.getWritePointer (1);
+        for (int i = 0; i < n; ++i)
+        {
+            const float m = monoAmount.getNextValue(), mid = 0.5f * (L[i] + R[i]);
+            L[i] += m * (mid - L[i]);
+            R[i] += m * (mid - R[i]);
+        }
     }
 
     // --- Output + safety soft limiter (transparent below -1 dBFS, can never exceed 0 dBFS) ---
@@ -1262,6 +1428,7 @@ void EmberAmpProcessor::setCurrentProgram (int index)
         set (ampParamID (f.amp, "mic"), (float) cs.mic);
         set (ampParamID (f.amp, "micPos"), cs.pos);
         set (ampParamID (f.amp, "micDist"), cs.dist);
+        set (ampParamID (f.amp, "micSpeaker"), 1.0f);
     }
     set (ampParamID (f.amp, "sustain"), f.ampSustain);
     if (f.amp != clean) set (ampParamID (f.amp, "drive"), f.ampDrive);
@@ -1284,6 +1451,9 @@ void EmberAmpProcessor::setCurrentProgram (int index)
     set ("reverbOn", f.revOn ? 1.0f : 0.0f);  set ("reverbSize", f.revSize);    set ("reverbMix", f.revMix);
     set ("chorusOn", f.chorusOn ? 1.0f : 0.0f);
     set ("dsOn", f.dsOn ? 1.0f : 0.0f);
+    // factory presets don't use the post EQ: off and flat
+    set ("eqOn", 0.0f); set ("eqLowCut", 20.0f); set ("eqHighCut", 20000.0f);
+    for (int b = 0; b < 4; ++b) { set ("eqFreq" + juce::String (b + 1), eqBandDefHz[b]); set ("eqGain" + juce::String (b + 1), 0.0f); }
     if (f.dsOn) { set ("dsDist", f.dsDist); set ("dsTone", f.dsTone); set ("dsLevel", f.dsLevel); }
     if (f.chorusOn) { set ("chorusRate", f.chorusRate); set ("chorusDepth", f.chorusDepth); set ("chorusMix", f.chorusMix); }
 }
