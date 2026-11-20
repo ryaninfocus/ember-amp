@@ -180,7 +180,7 @@ private:
     struct AmpKnobs { std::atomic<float>* gain; std::atomic<float>* bass; std::atomic<float>* mid;
                       std::atomic<float>* treble; std::atomic<float>* presence; std::atomic<float>* volume;
                       std::atomic<float>* cab; std::atomic<float>* sustain;
-                      std::atomic<float>* drive; };   // drive: Distortion amp only (nullptr otherwise)
+                      std::atomic<float>* drive; };   // drive: Crunch, Distortion, Solo (nullptr on Clean)
 
     void updateFilters (int amp);
     void setAmpVoicing (int amp);

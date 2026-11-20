@@ -142,6 +142,81 @@ static juce::Font spaced (float height, bool bold, float kerning)
     return f;
 }
 
+
+// Fine surface textures, made once: tolex grain and woven grille cloth
+static const juce::Image& tolexTexture()
+{
+    static juce::Image img = []
+    {
+        juce::Image im (juce::Image::ARGB, 192, 192, true);
+        juce::Random rng (7);
+        for (int y = 0; y < im.getHeight(); ++y)
+            for (int x = 0; x < im.getWidth(); ++x)
+            {
+                const float n = rng.nextFloat();
+                im.setPixelAt (x, y, n > 0.5f ? juce::Colours::white.withAlpha ((n - 0.5f) * 0.07f)
+                                              : juce::Colours::black.withAlpha ((0.5f - n) * 0.30f));
+            }
+        return im;
+    }();
+    return img;
+}
+
+static const juce::Image& clothTexture()
+{
+    static juce::Image img = []
+    {
+        juce::Image im (juce::Image::ARGB, 96, 96, true);
+        juce::Random rng (11);
+        for (int y = 0; y < im.getHeight(); ++y)
+            for (int x = 0; x < im.getWidth(); ++x)
+            {
+                // over-under weave: alternating 2x2 cells, lit threads and dark gaps
+                const bool warp = ((x / 2) + (y / 2)) % 2 == 0;
+                const bool gap = (x % 2 == 1 && y % 2 == 1);
+                float a = gap ? 0.0f : (warp ? 0.10f : 0.05f);
+                a += (rng.nextFloat() - 0.5f) * 0.03f;
+                im.setPixelAt (x, y, gap ? juce::Colours::black.withAlpha (0.45f) : juce::Colours::white.withAlpha (juce::jmax (0.0f, a)));
+            }
+        return im;
+    }();
+    return img;
+}
+
+static void fillTextured (juce::Graphics& g, const juce::Path& area, const juce::Image& tex, float opacity = 1.0f)
+{
+    g.saveState();
+    g.reduceClipRegion (area);
+    g.setOpacity (opacity);
+    g.setTiledImageFill (tex, 0, 0, opacity);
+    g.fillPath (area);
+    g.restoreState();
+}
+
+// brushed metal: a base gradient plus fine horizontal streaks
+static void fillBrushed (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour top, juce::Colour bottom, float streak)
+{
+    using namespace juce;
+    g.setGradientFill (ColourGradient (top, r.getX(), r.getY(), bottom, r.getX(), r.getBottom(), false));
+    g.fillRect (r);
+    Random rng (3);
+    g.saveState();
+    g.reduceClipRegion (r.toNearestInt());
+    for (float yy = r.getY(); yy < r.getBottom(); yy += 1.0f)
+    {
+        const float a = rng.nextFloat() * streak;
+        g.setColour ((rng.nextBool() ? Colours::white : Colours::black).withAlpha (a));
+        g.drawHorizontalLine ((int) yy, r.getX(), r.getRight());
+    }
+    // soft horizontal sheen
+    ColourGradient sheen (Colours::white.withAlpha (0.0f), r.getX(), r.getY(), Colours::white.withAlpha (0.0f), r.getRight(), r.getY(), false);
+    sheen.addColour (0.35, Colours::white.withAlpha (streak * 1.6f));
+    sheen.addColour (0.55, Colours::white.withAlpha (0.0f));
+    g.setGradientFill (sheen);
+    g.fillRect (r);
+    g.restoreState();
+}
+
 juce::Colour EmberAmpEditor::ampAccent (int amp)
 {
     static const juce::Colour cols[] = { juce::Colour (0xff4fd1c5),    // Clean: teal
@@ -222,42 +297,51 @@ void EmberLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
 
     if (style == "chrome" || style == "black")
     {
-        const bool chrome = style == "chrome";
         const bool lightPanel = (bool) s.getProperties()["lightPanel"];
-        const float kr = radius * 0.80f;
+        const float kr = radius * 0.74f;
 
-        // scale ticks printed on the panel
-        const auto tickCol = lightPanel ? Colour (0xff4a4640).withAlpha (0.55f) : Colours::white.withAlpha (0.35f);
+        // fine scale printed on the panel
+        const auto tickCol = lightPanel ? Colour (0xff15161a).withAlpha (0.55f) : Colours::white.withAlpha (0.42f);
         g.setColour (tickCol);
         for (int i = 0; i <= 10; ++i)
         {
             const float a = startAngle + (float) i / 10.0f * (endAngle - startAngle);
-            const float r1 = radius * 0.90f, r2 = radius * (i % 5 == 0 ? 1.0f : 0.96f);
-            g.drawLine (c.x + r1 * std::sin (a), c.y - r1 * std::cos (a), c.x + r2 * std::sin (a), c.y - r2 * std::cos (a), 1.0f);
+            const bool major = i % 5 == 0;
+            const float r1 = radius * 0.86f, r2 = radius * (major ? 0.99f : 0.93f);
+            g.drawLine (c.x + r1 * std::sin (a), c.y - r1 * std::cos (a), c.x + r2 * std::sin (a), c.y - r2 * std::cos (a), major ? 1.2f : 0.8f);
         }
 
-        // soft shadow, knurled skirt, machined cap
-        g.setColour (Colours::black.withAlpha (lightPanel ? 0.30f : 0.55f));
-        g.fillEllipse (c.x - kr + 1.5f, c.y - kr + 4.0f, kr * 2.0f, kr * 2.0f);
-        g.setGradientFill (ColourGradient (chrome ? Colour (0xffb9bcc2) : Colour (0xff2a2b2f), c.x, c.y - kr,
-                                           chrome ? Colour (0xff5b5e64) : Colour (0xff0b0b0d), c.x, c.y + kr, false));
+        // contact shadow
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (lightPanel ? 0.45f : 0.7f), c.x, c.y + kr * 0.25f,
+                                           Colours::transparentBlack, c.x, c.y + kr * 1.35f, true));
+        g.fillEllipse (Rectangle<float> (kr * 2.5f, kr * 2.5f).withCentre (c.translated (0.0f, kr * 0.18f)));
+
+        // skirt: matte black with a fine knurl
+        g.setGradientFill (ColourGradient (Colour (0xff2c2d31), c.x, c.y - kr, Colour (0xff060607), c.x, c.y + kr, false));
         g.fillEllipse (c.x - kr, c.y - kr, kr * 2.0f, kr * 2.0f);
-        g.setColour (Colours::black.withAlpha (chrome ? 0.18f : 0.35f));
-        for (int i = 0; i < 48; ++i)
+        g.setColour (Colours::white.withAlpha (0.05f));
+        for (int i = 0; i < 64; ++i)
         {
-            const float a = (float) i / 48.0f * MathConstants<float>::twoPi;
-            g.drawLine (c.x + kr * 0.80f * std::sin (a), c.y - kr * 0.80f * std::cos (a), c.x + kr * std::sin (a), c.y - kr * std::cos (a), 0.8f);
+            const float a = (float) i / 64.0f * MathConstants<float>::twoPi;
+            g.drawLine (c.x + kr * 0.80f * std::sin (a), c.y - kr * 0.80f * std::cos (a), c.x + kr * 0.98f * std::sin (a), c.y - kr * 0.98f * std::cos (a), 0.6f);
         }
-        const float cr = kr * 0.70f;
-        g.setGradientFill (ColourGradient (chrome ? Colour (0xfff4f5f7) : Colour (0xff3a3b40), c.x - cr * 0.5f, c.y - cr,
-                                           chrome ? Colour (0xff8f9298) : Colour (0xff141518), c.x + cr * 0.4f, c.y + cr, false));
+        g.setColour (Colours::black.withAlpha (0.8f));
+        g.drawEllipse (c.x - kr, c.y - kr, kr * 2.0f, kr * 2.0f, 1.0f);
+
+        // machined metal cap with a conical sheen
+        const float cr = kr * 0.62f;
+        g.setGradientFill (ColourGradient (Colour (0xfff2f3f5), c.x - cr * 0.6f, c.y - cr * 0.8f, Colour (0xff7d8086), c.x + cr * 0.6f, c.y + cr, false));
         g.fillEllipse (c.x - cr, c.y - cr, cr * 2.0f, cr * 2.0f);
-        g.setColour (Colours::white.withAlpha (chrome ? 0.55f : 0.12f));
+        g.setColour (Colours::white.withAlpha (0.25f));
+        for (int i = 1; i < 6; ++i)   // concentric machining rings
+            g.drawEllipse (Rectangle<float> (cr * 2.0f * (float) i / 6.0f, cr * 2.0f * (float) i / 6.0f).withCentre (c), 0.4f);
+        g.setColour (Colours::black.withAlpha (0.55f));
         g.drawEllipse (c.x - cr, c.y - cr, cr * 2.0f, cr * 2.0f, 0.8f);
-        // pointer notch
-        Path ptr; ptr.startNewSubPath (0.0f, -cr + 2.0f); ptr.lineTo (0.0f, -cr * 0.35f);
+
+        // white pointer line across the skirt
+        Path ptr; ptr.startNewSubPath (0.0f, -kr + 1.5f); ptr.lineTo (0.0f, -cr - 1.0f);
         ptr.applyTransform (AffineTransform::rotation (angle).translated (c.x, c.y));
-        g.setColour (chrome ? Colour (0xff1c1d20) : Colours::white.withAlpha (0.9f));
+        g.setColour (Colours::white.withAlpha (0.95f));
         g.strokePath (ptr, PathStrokeType (2.0f, PathStrokeType::curved, PathStrokeType::rounded));
         return;
     }
@@ -555,14 +639,14 @@ AmpPage::Theme AmpPage::themeFor (int amp)
     using juce::Colour;
     switch (amp)
     {
-        case 0:  return { Colour (0xffe9e5dc), Colour (0xffc9c3b7), Colour (0xffd8d3c8), Colour (0xff9d978b),
-                          Colour (0xfff1eee7), Colour (0xffd9d4ca), Colour (0xff3b3833), true };    // Clean: warm ivory
-        case 1:  return { Colour (0xff1f1d1b), Colour (0xff0f0e0d), Colour (0xff23201c), Colour (0xff3c362e),
-                          Colour (0xffcdb27a), Colour (0xff9c8152), Colour (0xff2a2116), true };    // Crunch: black + gold panel
-        case 2:  return { Colour (0xff35383d), Colour (0xff1c1e21), Colour (0xff202226), Colour (0xff3d4046),
-                          Colour (0xff2e3135), Colour (0xff1d1f22), Colour (0xffd9dadc), false };   // Distortion: gunmetal
-        default: return { Colour (0xff2a2533), Colour (0xff141119), Colour (0xff1c1823), Colour (0xff342d40),
-                          Colour (0xff2b2636), Colour (0xff1a1622), Colour (0xffe2dcef), false };   // Solo: dark plum
+        case 0:  return { Colour (0xff1b1c1f), Colour (0xff0d0d0f), Colour (0xff1e1f22), Colour (0xffc8c9cc),
+                          Colour (0xffd7d9dc), Colour (0xff9ea1a7), Colour (0xff17181b), true };    // Clean: brushed aluminium plate
+        case 1:  return { Colour (0xff1c1a18), Colour (0xff0d0c0b), Colour (0xff201d19), Colour (0xffc9ae76),
+                          Colour (0xffcfb47e), Colour (0xff8f7546), Colour (0xff1d1710), true };    // Crunch: brushed brass plate
+        case 2:  return { Colour (0xff1a1b1d), Colour (0xff0b0b0c), Colour (0xff141517), Colour (0xffa3322a),
+                          Colour (0xff1f2023), Colour (0xff111214), Colour (0xffe4e5e7), false };   // Distortion: black anodised plate
+        default: return { Colour (0xff1b1a1e), Colour (0xff0c0b0e), Colour (0xff17151b), Colour (0xff8a6fd0),
+                          Colour (0xff2e2738), Colour (0xff17131d), Colour (0xffebe5f5), false };   // Solo: smoked graphite plate
     }
 }
 
@@ -571,7 +655,7 @@ AmpPage::AmpPage (EmberAmpEditor& o, EmberAmpProcessor& p, int a)
 {
     const juce::String knobStyle = theme.lightPanel ? "chrome" : "black";
     std::vector<std::pair<const char*, const char*>> list;
-    if (amp == EmberAmpProcessor::distortion) list.push_back ({ "drive", "Drive" });
+    if (amp != EmberAmpProcessor::clean) list.push_back ({ "drive", "Drive" });
     for (auto kv : { std::pair<const char*, const char*> { "gain", "Gain" }, { "bass", "Bass" }, { "mid", "Middle" }, { "treble", "Treble" },
                      { "presence", "Presence" }, { "sustain", "Sustain" }, { "volume", "Volume" } })
         list.push_back (kv);
@@ -629,157 +713,163 @@ void AmpPage::paint (juce::Graphics& g)
 {
     using namespace juce;
     const auto h = head.toFloat();
+    const float corner = 7.0f;
 
-    // ---- floor shadow + feet
-    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.55f), h.getCentreX(), h.getBottom() + 4.0f,
-                                       Colours::transparentBlack, h.getCentreX(), h.getBottom() + 40.0f, false));
-    g.fillRect (h.withY (h.getBottom()).withHeight (40.0f).reduced (30.0f, 0.0f));
-    for (float fx : { h.getX() + 70.0f, h.getRight() - 150.0f })
-    {
-        g.setGradientFill (ColourGradient (Colour (0xff2a2b30), fx, h.getBottom(), Colour (0xff0c0c0e), fx, h.getBottom() + 16.0f, false));
-        g.fillRoundedRectangle (fx, h.getBottom() - 4.0f, 80.0f, 18.0f, 5.0f);
-    }
+    // ---- contact shadow under the head
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.6f), h.getCentreX(), h.getBottom(),
+                                       Colours::transparentBlack, h.getCentreX(), h.getBottom() + 22.0f, false));
+    g.fillRect (h.withY (h.getBottom() - 2.0f).withHeight (24.0f).reduced (12.0f, 0.0f));
 
-    // ---- chassis
+    // ---- chassis: black tolex, a light rim along the top edge
+    Path shell; shell.addRoundedRectangle (h, corner);
     g.setGradientFill (ColourGradient (theme.chassisTop, h.getX(), h.getY(), theme.chassisBottom, h.getX(), h.getBottom(), false));
-    g.fillRoundedRectangle (h, 26.0f);
-    g.setGradientFill (ColourGradient (Colours::white.withAlpha (theme.lightPanel && amp == 0 ? 0.55f : 0.16f), h.getCentreX(), h.getY(),
-                                       Colours::transparentBlack, h.getCentreX(), h.getY() + 26.0f, false));
-    g.drawRoundedRectangle (h.reduced (1.0f), 25.0f, 2.0f);
-    g.setColour (Colours::black.withAlpha (0.35f));
-    g.drawRoundedRectangle (h.reduced (0.5f), 26.0f, 1.0f);
+    g.fillPath (shell);
+    fillTextured (g, shell, tolexTexture());
+    g.setColour (Colours::white.withAlpha (0.10f));
+    g.drawHorizontalLine ((int) h.getY() + 1, h.getX() + corner, h.getRight() - corner);
+    g.setColour (Colours::black);
+    g.strokePath (shell, PathStrokeType (1.0f));
+
+    // thin piping around the front
+    const auto pipe = h.reduced (11.0f);
+    g.setColour (theme.grilleLine.withAlpha (0.55f));
+    g.drawRoundedRectangle (pipe, 4.0f, 1.2f);
+    g.setColour (Colours::black.withAlpha (0.6f));
+    g.drawRoundedRectangle (pipe.translated (0.0f, 1.2f), 4.0f, 0.6f);
 
     // ---- grille cloth
     const auto gr = grille.toFloat();
-    g.saveState();
     {
-        Path clip; clip.addRoundedRectangle (gr, 8.0f);
-        g.reduceClipRegion (clip);
-        g.setGradientFill (ColourGradient (theme.grille.brighter (0.06f), gr.getX(), gr.getY(), theme.grille.darker (0.15f), gr.getX(), gr.getBottom(), false));
-        g.fillRect (gr);
-        g.setColour (theme.grilleLine.withAlpha (0.35f));
-        for (float d = -gr.getHeight(); d < gr.getWidth(); d += 4.0f)
+        Path cloth; cloth.addRoundedRectangle (gr, 3.0f);
+        g.setColour (theme.grille);
+        g.fillPath (cloth);
+        fillTextured (g, cloth, clothTexture(), 0.9f);
+        g.saveState();
+        g.reduceClipRegion (cloth);
+        // speaker cones barely showing through
+        for (int i = 0; i < 2; ++i)
         {
-            g.drawLine (gr.getX() + d, gr.getBottom(), gr.getX() + d + gr.getHeight(), gr.getY(), 0.6f);
-            g.drawLine (gr.getX() + d, gr.getY(), gr.getX() + d + gr.getHeight(), gr.getBottom(), 0.6f);
+            const float cx = gr.getX() + gr.getWidth() * (0.27f + 0.46f * (float) i);
+            const float rr = gr.getHeight() * 0.62f;
+            g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.30f), cx, gr.getCentreY(), Colours::transparentBlack, cx + rr, gr.getCentreY(), true));
+            g.fillEllipse (Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre ({ cx, gr.getCentreY() }));
         }
-        // inset shadow
-        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.28f), gr.getX(), gr.getY(), Colours::transparentBlack, gr.getX(), gr.getY() + 18.0f, false));
-        g.fillRect (gr.withHeight (18.0f));
+        // depth: darker toward the frame
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.45f), gr.getX(), gr.getY(), Colours::transparentBlack, gr.getX(), gr.getY() + 22.0f, false));
+        g.fillRect (gr.withHeight (22.0f));
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.35f), gr.getX(), gr.getBottom(), Colours::transparentBlack, gr.getX(), gr.getBottom() - 16.0f, false));
+        g.fillRect (gr.withTrimmedTop (gr.getHeight() - 16.0f));
+        g.restoreState();
+        g.setColour (Colours::black.withAlpha (0.8f));
+        g.strokePath (cloth, PathStrokeType (1.0f));
     }
-    g.restoreState();
-    g.setColour (Colours::black.withAlpha (0.35f));
-    g.drawRoundedRectangle (gr, 8.0f, 1.0f);
 
-    // ---- emblem: bezel ring with the Ember mark, lit when this amp is live
-    const auto ec = gr.getCentre();
-    const float er = jmin (gr.getHeight() * 0.36f, 74.0f);
-    if (shownActive)
+    // ---- nameplate: a small metal badge on the cloth
     {
-        g.setGradientFill (ColourGradient (accent.withAlpha (0.45f), ec.x, ec.y, accent.withAlpha (0.0f), ec.x + er * 2.2f, ec.y, true));
-        g.fillEllipse (Rectangle<float> (er * 4.4f, er * 4.4f).withCentre (ec));
+        auto plate = Rectangle<float> (232.0f, 50.0f).withCentre (gr.getCentre());
+        g.setColour (Colours::black.withAlpha (0.55f));
+        g.fillRoundedRectangle (plate.translated (0.0f, 3.0f).expanded (1.0f), 3.0f);
+        const bool light = theme.lightPanel;
+        fillBrushed (g, plate, light ? theme.panelTop : Colour (0xff3a3c41), light ? theme.panelBottom : Colour (0xff17181b), 0.05f);
+        g.setColour (Colours::black.withAlpha (0.6f));
+        g.drawRoundedRectangle (plate, 3.0f, 1.0f);
+        g.setColour (Colours::white.withAlpha (light ? 0.6f : 0.18f));
+        g.drawHorizontalLine ((int) plate.getY() + 1, plate.getX() + 2.0f, plate.getRight() - 2.0f);
+        const auto ink = light ? theme.text : Colour (0xffe7e8ea);
+        g.setColour (ink.withAlpha (0.92f));
+        g.setFont (spaced (17.0f, true, 0.55f));
+        g.drawText ("EMBER", plate.withTrimmedBottom (18.0f).withTrimmedTop (4.0f), Justification::centred);
+        g.setColour (ink.withAlpha (0.65f));
+        g.setFont (spaced (9.0f, false, 0.6f));
+        g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase() + "  CHANNEL", plate.withTrimmedTop (30.0f).withTrimmedBottom (6.0f), Justification::centred);
+        // corner rivets
+        for (auto p : { plate.getTopLeft().translated (7.0f, 7.0f), plate.getTopRight().translated (-7.0f, 7.0f),
+                        plate.getBottomLeft().translated (7.0f, -7.0f), plate.getBottomRight().translated (-7.0f, -7.0f) })
+        {
+            g.setGradientFill (ColourGradient (Colour (0xffd6d8dc), p.x, p.y - 2.0f, Colour (0xff4f5257), p.x, p.y + 2.0f, false));
+            g.fillEllipse (Rectangle<float> (4.0f, 4.0f).withCentre (p));
+        }
     }
-    g.setColour (Colours::black.withAlpha (0.45f));
-    g.fillEllipse (Rectangle<float> (er * 2.0f + 10.0f, er * 2.0f + 10.0f).withCentre (ec.translated (0.0f, 4.0f)));
-    g.setGradientFill (ColourGradient (Colour (0xffe6e8ec), ec.x, ec.y - er, Colour (0xff5d6168), ec.x, ec.y + er, false));
-    g.fillEllipse (Rectangle<float> (er * 2.0f + 8.0f, er * 2.0f + 8.0f).withCentre (ec));
-    g.setGradientFill (ColourGradient (Colour (0xff17181c), ec.x, ec.y - er, Colour (0xff050506), ec.x, ec.y + er, false));
-    g.fillEllipse (Rectangle<float> (er * 2.0f, er * 2.0f).withCentre (ec));
-    if (logo.isValid())
-    {
-        g.setOpacity (shownActive ? 1.0f : 0.45f);
-        g.drawImage (logo, Rectangle<float> (er * 1.55f, er * 1.55f).withCentre (ec), RectanglePlacement::centred);
-        g.setOpacity (1.0f);
-    }
-    g.setColour (Colours::white.withAlpha (0.18f));
-    g.drawEllipse (Rectangle<float> (er * 2.0f, er * 2.0f).withCentre (ec), 1.0f);
 
-    // badge (top-left of the grille)
-    auto badge = Rectangle<float> (gr.getX() + 20.0f, gr.getY() + 18.0f, 150.0f, 26.0f);
-    g.setGradientFill (ColourGradient (Colour (0xffd9dbdf), badge.getX(), badge.getY(), Colour (0xff8e9197), badge.getX(), badge.getBottom(), false));
-    g.fillRoundedRectangle (badge, 4.0f);
-    g.setColour (Colour (0xff1d1e21));
-    g.setFont (spaced (12.0f, true, 0.30f));
-    g.drawText ("EMBER  " + EmberAmpProcessor::ampName (amp).toUpperCase(), badge, Justification::centred);
-
-    // ---- control panel: brushed metal strip
+    // ---- control plate
     const auto pn = panel.toFloat();
-    g.setGradientFill (ColourGradient (theme.panelTop, pn.getX(), pn.getY(), theme.panelBottom, pn.getX(), pn.getBottom(), false));
-    g.fillRoundedRectangle (pn, 6.0f);
-    g.saveState();
-    g.reduceClipRegion (panel);
-    g.setColour ((theme.lightPanel ? Colours::white : Colours::white).withAlpha (theme.lightPanel ? 0.10f : 0.025f));
-    for (float yy = pn.getY() + 1.0f; yy < pn.getBottom(); yy += 2.0f)
-        g.drawHorizontalLine ((int) yy, pn.getX(), pn.getRight());
-    g.restoreState();
-    g.setColour (Colours::black.withAlpha (0.35f));
-    g.drawRoundedRectangle (pn, 6.0f, 1.0f);
-    g.setColour (Colours::white.withAlpha (theme.lightPanel ? 0.5f : 0.08f));
-    g.drawHorizontalLine ((int) pn.getY() + 1, pn.getX() + 6.0f, pn.getRight() - 6.0f);
+    g.setColour (Colours::black);
+    g.fillRoundedRectangle (pn.expanded (2.0f), 3.0f);
+    fillBrushed (g, pn, theme.panelTop, theme.panelBottom, theme.lightPanel ? 0.06f : 0.025f);
+    g.setColour (Colours::white.withAlpha (theme.lightPanel ? 0.55f : 0.10f));
+    g.drawHorizontalLine ((int) pn.getY(), pn.getX(), pn.getRight());
+    g.setColour (Colours::black.withAlpha (0.5f));
+    g.drawRect (pn, 1.0f);
 
-    // screws
-    for (auto p : { pn.getTopLeft().translated (12.0f, 12.0f), pn.getTopRight().translated (-12.0f, 12.0f),
-                    pn.getBottomLeft().translated (12.0f, -12.0f), pn.getBottomRight().translated (-12.0f, -12.0f) })
+    // hex screws
+    for (auto p : { pn.getTopLeft().translated (10.0f, 10.0f), pn.getTopRight().translated (-10.0f, 10.0f),
+                    pn.getBottomLeft().translated (10.0f, -10.0f), pn.getBottomRight().translated (-10.0f, -10.0f) })
     {
-        g.setGradientFill (ColourGradient (Colour (0xffd0d2d6), p.x, p.y - 3.0f, Colour (0xff6a6d73), p.x, p.y + 3.0f, false));
-        g.fillEllipse (Rectangle<float> (7.0f, 7.0f).withCentre (p));
-        g.setColour (Colours::black.withAlpha (0.4f));
-        g.drawLine (p.x - 2.5f, p.y, p.x + 2.5f, p.y, 0.8f);
+        g.setColour (Colours::black.withAlpha (0.5f));
+        g.fillEllipse (Rectangle<float> (7.5f, 7.5f).withCentre (p.translated (0.0f, 0.8f)));
+        g.setGradientFill (ColourGradient (Colour (0xff5a5d63), p.x, p.y - 3.0f, Colour (0xff1c1d20), p.x, p.y + 3.0f, false));
+        g.fillEllipse (Rectangle<float> (6.5f, 6.5f).withCentre (p));
+        g.setColour (Colours::black.withAlpha (0.7f));
+        Path hex; hex.addPolygon (p, 6, 1.6f, 0.0f);
+        g.fillPath (hex);
     }
 
-    // input jack (left) and pilot light + name (right)
-    const auto jack = Point<float> (pn.getX() + 52.0f, pn.getCentreY());
-    g.setGradientFill (ColourGradient (Colour (0xffe1e3e7), jack.x, jack.y - 12.0f, Colour (0xff5f6268), jack.x, jack.y + 12.0f, false));
-    g.fillEllipse (Rectangle<float> (24.0f, 24.0f).withCentre (jack));
-    g.setColour (Colour (0xff0b0b0c));
-    g.fillEllipse (Rectangle<float> (9.0f, 9.0f).withCentre (jack));
-    g.setColour (theme.text.withAlpha (0.7f));
-    g.setFont (spaced (9.5f, false, 0.3f));
-    g.drawText ("INPUT", Rectangle<float> (60.0f, 14.0f).withCentre (jack.translated (0.0f, -24.0f)), Justification::centred);
+    const auto ink = theme.text;
 
-    const auto lamp = Point<float> (pn.getRight() - 160.0f, pn.getCentreY());
+    // input jack (left)
+    const auto jack = Point<float> (pn.getX() + 52.0f, pn.getCentreY() + 6.0f);
+    g.setColour (Colours::black.withAlpha (0.5f));
+    g.fillEllipse (Rectangle<float> (24.0f, 24.0f).withCentre (jack.translated (0.0f, 1.5f)));
+    g.setGradientFill (ColourGradient (Colour (0xffd9dbdf), jack.x, jack.y - 11.0f, Colour (0xff4c4f55), jack.x, jack.y + 11.0f, false));
+    g.fillEllipse (Rectangle<float> (22.0f, 22.0f).withCentre (jack));
+    g.setGradientFill (ColourGradient (Colour (0xff6b6e74), jack.x, jack.y - 6.0f, Colour (0xff1a1b1e), jack.x, jack.y + 6.0f, false));
+    g.fillEllipse (Rectangle<float> (14.0f, 14.0f).withCentre (jack));
+    g.setColour (Colour (0xff050506));
+    g.fillEllipse (Rectangle<float> (7.0f, 7.0f).withCentre (jack));
+    g.setColour (ink.withAlpha (0.75f));
+    g.setFont (spaced (9.0f, false, 0.4f));
+    g.drawText ("INPUT", Rectangle<float> (60.0f, 14.0f).withCentre (jack.translated (0.0f, -26.0f)), Justification::centred);
+
+    // pilot jewel + wordmark (right)
+    const auto lamp = Point<float> (pn.getRight() - 150.0f, pn.getCentreY() + 6.0f);
+    g.setColour (ink.withAlpha (0.75f));
+    g.setFont (spaced (9.0f, false, 0.4f));
+    g.drawText ("ON", Rectangle<float> (40.0f, 14.0f).withCentre (lamp.translated (0.0f, -26.0f)), Justification::centred);
+    g.setGradientFill (ColourGradient (Colour (0xffcfd1d5), lamp.x, lamp.y - 10.0f, Colour (0xff45484d), lamp.x, lamp.y + 10.0f, false));
+    g.fillEllipse (Rectangle<float> (20.0f, 20.0f).withCentre (lamp));
     if (shownActive)
     {
-        g.setGradientFill (ColourGradient (accent.withAlpha (0.65f), lamp.x, lamp.y, accent.withAlpha (0.0f), lamp.x + 18.0f, lamp.y, true));
-        g.fillEllipse (Rectangle<float> (36.0f, 36.0f).withCentre (lamp));
+        g.setGradientFill (ColourGradient (Colour (0xffff4b2b).withAlpha (0.55f), lamp.x, lamp.y, Colour (0x00ff4b2b), lamp.x + 16.0f, lamp.y, true));
+        g.fillEllipse (Rectangle<float> (32.0f, 32.0f).withCentre (lamp));
     }
-    g.setGradientFill (ColourGradient ((shownActive ? accent.brighter (0.4f) : Colour (0xff3a3a3d)), lamp.x - 3.0f, lamp.y - 4.0f,
-                                       (shownActive ? accent.darker (0.3f) : Colour (0xff151517)), lamp.x + 3.0f, lamp.y + 5.0f, false));
-    g.fillEllipse (Rectangle<float> (14.0f, 14.0f).withCentre (lamp));
-    g.setColour (Colours::black.withAlpha (0.5f));
-    g.drawEllipse (Rectangle<float> (16.0f, 16.0f).withCentre (lamp), 1.5f);
+    g.setGradientFill (ColourGradient (shownActive ? Colour (0xffffb09a) : Colour (0xff4a1c18), lamp.x - 2.0f, lamp.y - 4.0f,
+                                       shownActive ? Colour (0xffd8261a) : Colour (0xff1c0907), lamp.x + 2.0f, lamp.y + 5.0f, false));
+    g.fillEllipse (Rectangle<float> (13.0f, 13.0f).withCentre (lamp));
+    g.setColour (Colours::white.withAlpha (shownActive ? 0.7f : 0.25f));
+    g.fillEllipse (Rectangle<float> (3.5f, 3.0f).withCentre (lamp.translated (-2.0f, -3.0f)));
 
-    g.setColour (theme.text.withAlpha (0.85f));
-    g.setFont (FontOptions (22.0f, Font::italic | Font::bold));
-    g.drawText ("Ember", Rectangle<float> (pn.getRight() - 140.0f, pn.getCentreY() - 22.0f, 110.0f, 26.0f), Justification::centredLeft);
-    g.setFont (spaced (9.5f, false, 0.35f));
-    g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase(), Rectangle<float> (pn.getRight() - 140.0f, pn.getCentreY() + 4.0f, 110.0f, 16.0f), Justification::centredLeft);
+    g.setColour (ink.withAlpha (0.9f));
+    g.setFont (spaced (13.0f, true, 0.45f));
+    g.drawText ("EMBER", Rectangle<float> (pn.getRight() - 124.0f, pn.getCentreY() - 14.0f, 104.0f, 18.0f), Justification::centredLeft);
+    g.setColour (ink.withAlpha (0.6f));
+    g.setFont (spaced (8.5f, false, 0.45f));
+    g.drawText (EmberAmpProcessor::ampName (amp).toUpperCase(), Rectangle<float> (pn.getRight() - 124.0f, pn.getCentreY() + 6.0f, 104.0f, 14.0f), Justification::centredLeft);
 
-    // ---- cab top below the head
+    // ---- cab: the top of the speaker cabinet the head sits on
     const auto ct = cabTop.toFloat();
-    g.setGradientFill (ColourGradient (Colour (0xff1a1b1f), ct.getX(), ct.getY(), Colour (0xff0b0b0d), ct.getX(), ct.getBottom(), false));
-    g.fillRoundedRectangle (ct.withHeight (ct.getHeight() + 30.0f), 22.0f);
-    g.setColour (Colours::white.withAlpha (0.10f));
-    g.drawHorizontalLine ((int) ct.getY() + 1, ct.getX() + 22.0f, ct.getRight() - 22.0f);
-    // grille cloth band with the speaker cones showing through
+    Path cab; cab.addRoundedRectangle (ct.getX(), ct.getY(), ct.getWidth(), ct.getHeight() + 30.0f, 7.0f, 7.0f, true, true, false, false);
+    g.setGradientFill (ColourGradient (Colour (0xff18191c), ct.getX(), ct.getY(), Colour (0xff0a0a0b), ct.getX(), ct.getBottom(), false));
+    g.fillPath (cab);
+    fillTextured (g, cab, tolexTexture());
+    g.setColour (Colours::white.withAlpha (0.09f));
+    g.drawHorizontalLine ((int) ct.getY() + 1, ct.getX() + 7.0f, ct.getRight() - 7.0f);
     auto band = ct.reduced (22.0f, 0.0f).withTrimmedTop (16.0f).withTrimmedBottom (4.0f);
-    g.saveState();
-    g.reduceClipRegion (band.toNearestInt());
-    g.setColour (Colour (0xff121316));
-    g.fillRect (band);
-    const int cones = amp == EmberAmpProcessor::clean ? 2 : 2;
-    for (int i = 0; i < cones; ++i)
     {
-        const float cx = band.getX() + band.getWidth() * ((float) i + 0.5f) / (float) cones;
-        const float rr = band.getWidth() * 0.18f;
-        g.setColour (Colours::white.withAlpha (shownCab ? 0.07f : 0.03f));
-        g.drawEllipse (Rectangle<float> (rr * 2.0f, rr * 2.0f).withCentre ({ cx, band.getBottom() + rr * 0.55f }), 2.0f);
-        g.drawEllipse (Rectangle<float> (rr * 1.2f, rr * 1.2f).withCentre ({ cx, band.getBottom() + rr * 0.55f }), 1.0f);
+        Path cl; cl.addRectangle (band);
+        g.setColour (Colour (0xff111214));
+        g.fillPath (cl);
+        fillTextured (g, cl, clothTexture(), shownCab ? 0.8f : 0.45f);
     }
-    g.setColour (Colours::white.withAlpha (0.025f));
-    for (float xx = band.getX(); xx < band.getRight(); xx += 3.0f)
-        g.drawVerticalLine ((int) xx, band.getY(), band.getBottom());
-    g.restoreState();
 }
 
 void AmpPage::resized()
@@ -835,28 +925,42 @@ void PedalUnit::paint (juce::Graphics& g)
     using namespace juce;
     auto r = getLocalBounds().toFloat().reduced (2.0f);
     const bool on = footswitch.getToggleState();
-    const auto matte = body.withSaturation (body.getSaturation() * 0.55f);
+    const auto colour = body.withSaturation (body.getSaturation() * 0.85f);
 
-    g.setColour (Colours::black.withAlpha (0.6f));
-    g.fillRoundedRectangle (r.translated (0.0f, 8.0f), 12.0f);
-    g.setGradientFill (ColourGradient (matte.withMultipliedBrightness (on ? 0.62f : 0.38f), r.getX(), r.getY(),
-                                       matte.withMultipliedBrightness (on ? 0.36f : 0.20f), r.getX(), r.getBottom(), false));
-    g.fillRoundedRectangle (r, 12.0f);
-    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.10f), r.getX(), r.getY(), Colours::transparentBlack, r.getX(), r.getY() + 40.0f, false));
-    g.fillRoundedRectangle (r, 12.0f);
-    g.setColour (Colours::black.withAlpha (0.4f));
-    g.drawRoundedRectangle (r.reduced (0.5f), 12.0f, 1.0f);
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.65f), r.getCentreX(), r.getBottom(), Colours::transparentBlack, r.getCentreX(), r.getBottom() + 14.0f, false));
+    g.fillRect (r.withY (r.getBottom() - 4.0f).withHeight (18.0f).reduced (6.0f, 0.0f));
 
-    g.setColour (Colours::white.withAlpha (on ? 0.95f : 0.55f));
-    g.setFont (spaced (13.0f, true, 0.25f));
-    g.drawText (name.toUpperCase(), r.withHeight (48.0f).withTrimmedTop (18.0f), Justification::centred);
-    const auto led = Rectangle<float> (8.0f, 8.0f).withCentre ({ r.getCentreX(), r.getY() + 58.0f });
+    // powder-coated enclosure
+    Path box; box.addRoundedRectangle (r, 6.0f);
+    g.setGradientFill (ColourGradient (Colour (0xff222327), r.getX(), r.getY(), Colour (0xff121315), r.getX(), r.getBottom(), false));
+    g.fillPath (box);
+    fillTextured (g, box, tolexTexture(), 0.6f);
+    g.setColour (Colours::white.withAlpha (0.08f));
+    g.drawHorizontalLine ((int) r.getY() + 1, r.getX() + 6.0f, r.getRight() - 6.0f);
+    g.setColour (Colours::black);
+    g.strokePath (box, PathStrokeType (1.0f));
+
+    // colour band with the name
+    auto band = r.reduced (6.0f).removeFromTop (34.0f);
+    g.setGradientFill (ColourGradient (colour.withMultipliedBrightness (on ? 0.95f : 0.45f), band.getX(), band.getY(),
+                                       colour.withMultipliedBrightness (on ? 0.65f : 0.30f), band.getX(), band.getBottom(), false));
+    g.fillRoundedRectangle (band, 3.0f);
+    g.setColour (Colours::white.withAlpha (on ? 0.25f : 0.08f));
+    g.drawHorizontalLine ((int) band.getY(), band.getX() + 3.0f, band.getRight() - 3.0f);
+    g.setColour (Colours::white.withAlpha (on ? 0.97f : 0.5f));
+    g.setFont (spaced (11.5f, true, 0.3f));
+    g.drawFittedText (name.toUpperCase(), band.reduced (4.0f, 0.0f).toNearestInt(), Justification::centred, 1, 0.6f);
+
+    // status LED
+    const auto led = Rectangle<float> (7.0f, 7.0f).withCentre ({ r.getCentreX(), r.getY() + 58.0f });
     if (on)
     {
-        g.setColour (Colour (0xffff3b30).withAlpha (0.35f));
-        g.fillEllipse (led.expanded (6.0f));
+        g.setGradientFill (ColourGradient (Colour (0xffff3b30).withAlpha (0.5f), led.getCentreX(), led.getCentreY(), Colour (0x00ff3b30), led.getCentreX() + 9.0f, led.getCentreY(), true));
+        g.fillEllipse (led.expanded (7.0f));
     }
-    g.setColour (on ? Colour (0xffff3b30) : Colour (0xff2a1211));
+    g.setColour (Colours::black.withAlpha (0.7f));
+    g.fillEllipse (led.expanded (1.5f));
+    g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff2a1211));
     g.fillEllipse (led);
 }
 
@@ -901,13 +1005,22 @@ void PedalsPage::paint (juce::Graphics& g)
 
     // pedalboard: dark anodised rails
     auto board = r.withTrimmedTop (30.0f).reduced (10.0f, 0.0f).withTrimmedBottom (8.0f);
-    g.setColour (Colours::black.withAlpha (0.5f));
-    g.fillRoundedRectangle (board.translated (0.0f, 8.0f), 14.0f);
-    g.setGradientFill (ColourGradient (Colour (0xff1c1d22), board.getX(), board.getY(), Colour (0xff0d0e11), board.getX(), board.getBottom(), false));
-    g.fillRoundedRectangle (board, 14.0f);
-    g.setColour (Colours::white.withAlpha (0.025f));
-    for (float yy = board.getY() + 20.0f; yy < board.getBottom() - 10.0f; yy += 26.0f)
-        g.fillRect (board.getX() + 14.0f, yy, board.getWidth() - 28.0f, 10.0f);
+    {
+        Path b; b.addRoundedRectangle (board, 6.0f);
+        g.setGradientFill (ColourGradient (Colour (0xff17181b), board.getX(), board.getY(), Colour (0xff0b0b0d), board.getX(), board.getBottom(), false));
+        g.fillPath (b);
+        fillTextured (g, b, tolexTexture(), 0.7f);
+        g.setColour (Colours::black);
+        g.strokePath (b, PathStrokeType (1.0f));
+        // aluminium rails
+        for (float yy = board.getY() + 30.0f; yy < board.getBottom() - 20.0f; yy += 60.0f)
+        {
+            g.setColour (Colours::black.withAlpha (0.6f));
+            g.fillRect (board.getX() + 12.0f, yy + 1.0f, board.getWidth() - 24.0f, 8.0f);
+            g.setColour (Colours::white.withAlpha (0.035f));
+            g.fillRect (board.getX() + 12.0f, yy, board.getWidth() - 24.0f, 7.0f);
+        }
+    }
 
     g.setColour (Palette::muted);
     g.setFont (spaced (11.0f, true, 0.3f));
@@ -916,10 +1029,10 @@ void PedalsPage::paint (juce::Graphics& g)
 
     const auto a = ampSlot.toFloat();
     const auto accent = EmberAmpEditor::ampAccent (proc.getSelectedAmp());
-    g.setColour (Colours::white.withAlpha (0.04f));
-    g.fillRoundedRectangle (a, 10.0f);
-    g.setColour (accent.withAlpha (0.8f));
-    g.drawRoundedRectangle (a.reduced (0.5f), 10.0f, 1.2f);
+    g.setColour (Colour (0xff0d0e10));
+    g.fillRoundedRectangle (a, 4.0f);
+    g.setColour (accent.withAlpha (0.7f));
+    g.drawRoundedRectangle (a.reduced (0.5f), 4.0f, 1.0f);
     g.setColour (Palette::muted);
     g.setFont (spaced (10.0f, true, 0.3f));
     g.drawText ("AMP", a.withHeight (a.getHeight() * 0.5f - 6.0f), Justification::centredBottom);
@@ -1213,11 +1326,11 @@ void EmberAmpEditor::paint (juce::Graphics& g)
     const auto b = getLocalBounds().toFloat();
 
     // stage: near-black with a soft spotlight behind the amp
-    g.setGradientFill (ColourGradient (Colour (0xff14161b), b.getCentreX(), 0.0f, Colour (0xff060708), b.getCentreX(), b.getBottom(), false));
+    g.setGradientFill (ColourGradient (Colour (0xff121315), b.getCentreX(), 0.0f, Colour (0xff08090a), b.getCentreX(), b.getBottom(), false));
     g.fillAll();
     const auto st = stageArea.toFloat();
-    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.07f), st.getCentreX(), st.getY() + st.getHeight() * 0.35f,
-                                       Colours::transparentBlack, st.getCentreX() + st.getWidth() * 0.55f, st.getY() + st.getHeight() * 0.35f, true));
+    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.025f), st.getCentreX(), st.getY() + st.getHeight() * 0.4f,
+                                       Colours::transparentBlack, st.getCentreX() + st.getWidth() * 0.6f, st.getY() + st.getHeight() * 0.4f, true));
     g.fillRect (st.expanded (0.0f, 60.0f));
 
     // logo (top-left)

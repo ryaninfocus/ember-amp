@@ -8,6 +8,10 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.2
+- New look: realistic black-tolex amps with brushed metal control plates, machined knobs and a cleaner pedalboard.
+- Crunch and Solo now have a **Drive** knob too (starts at 0%, so your presets sound the same).
+
 ## New in 1.1.5
 - Ember Amp starts fresh every time you open it. To keep a sound, use **SAVE AS...** to make your own preset. Your audio interface and Stream settings are still remembered.
 - Transpose starts at -1 semitone.

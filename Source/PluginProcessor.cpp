@@ -69,7 +69,7 @@ namespace
         bool pitchOn; int pitch; float pitchMix;
         bool delayOn; float delayTime, delayFeedback, delayMix;
         bool revOn;   float revSize, revMix;
-        float ampSustain, ampDrive;   // the amp's own Sustain knob, and Drive (Distortion amp only)
+        float ampSustain, ampDrive;   // the amp's own Sustain knob, and Drive (not on Clean)
         bool chorusOn = false; float chorusRate = 0.8f, chorusDepth = 0.5f, chorusMix = 0.5f;
         bool dsOn = false; float dsDist = 0.6f, dsTone = 0.5f, dsLevel = 0.5f;   // DS-style distortion pedal
     };
@@ -419,7 +419,7 @@ EmberAmpProcessor::EmberAmpProcessor()
         knobs[a] = { raw (ampParamID (a, "gain")), raw (ampParamID (a, "bass")), raw (ampParamID (a, "mid")),
                      raw (ampParamID (a, "treble")), raw (ampParamID (a, "presence")), raw (ampParamID (a, "volume")),
                      raw (ampParamID (a, "cab")), raw (ampParamID (a, "sustain")),
-                     a == distortion ? raw (ampParamID (a, "drive")) : nullptr };
+                     a != clean ? raw (ampParamID (a, "drive")) : nullptr };
 
     for (auto& f : irActive) f = false;
 
@@ -477,8 +477,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "volume"), 1 }, n + "Volume", NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f, dBA));
         p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { ampParamID (a, "cab"), 1 }, n + "Cab", true));
         p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "sustain"), 1 }, n + "Sustain", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f, pct));
-        if (a == distortion)
-            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "drive"), 1 }, n + "Drive", NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, pct));
+        if (a != clean)   // Distortion has always had Drive; Crunch and Solo got it in 1.2 (starts at 0 = as before)
+            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { ampParamID (a, "drive"), 1 }, n + "Drive", NormalisableRange<float> (0.0f, 1.0f, 0.001f),
+                                                                a == distortion ? 0.5f : 0.0f, pct));
     }
 
     // pedals
@@ -583,7 +584,7 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     ampCompMakeup.reset (sampleRate, 0.05);
     ampCompMakeup.setCurrentAndTargetValue (1.0f);
     ampDrive.reset (sampleRate * 4.0, 0.05);
-    ampDrive.setCurrentAndTargetValue (knobs[distortion].drive->load());
+    ampDrive.setCurrentAndTargetValue (0.0f);
     ampDriveLp = 0.0f;
 
     leveler.prepare (monoSpec);
@@ -909,7 +910,7 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     auto up = oversampler.processSamplesUp (monoBlock);
     auto* u = up.getChannelPointer (0);
     boostAmount.setTargetValue (pOdOn->load() > 0.5f ? pBoost->load() : 0.0f);
-    ampDrive.setTargetValue (knobs[distortion].drive->load());
+    ampDrive.setTargetValue (k.drive != nullptr ? k.drive->load() : 0.0f);
     const bool boostActive = boostAmount.isSmoothing() || boostAmount.getTargetValue() > 0.0005f;
     dsWet.setTargetValue (pDsOn->load() > 0.5f ? 1.0f : 0.0f);
     dsDrive.setTargetValue (pDsDist->load()); dsTone.setTargetValue (pDsTone->load()); dsLevel.setTargetValue (pDsLevel->load());
@@ -947,8 +948,8 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             s += d * (0.35f * std::tanh (pg * tightIn) - s);
         }
 
-        // Distortion amp's own Drive knob: a built-in tight boost in front of its preamp
-        if (amp == distortion)
+        // the amp's own Drive knob (Crunch, Distortion, Solo): a built-in tight boost in front of its preamp
+        if (k.drive != nullptr || ampDrive.isSmoothing())
         {
             const float d = ampDrive.getNextValue();
             if (d > 0.0005f)
@@ -957,6 +958,8 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                 const float tightIn = s - 0.8f * d * ampDriveLp;
                 const float pg = dB (6.0f + 24.0f * d);
                 s += d * (0.35f * std::tanh (pg * tightIn) - s);
+                if (amp != distortion)
+                    s *= dB (12.0f * d);   // Crunch / Solo: Drive also pushes the preamp harder (up to +12 dB)
             }
         }
 
@@ -1124,7 +1127,7 @@ void EmberAmpProcessor::setCurrentProgram (int index)
     set (ampParamID (f.amp, "presence"), f.presence); set (ampParamID (f.amp, "volume"), f.volume);
     set (ampParamID (f.amp, "cab"), 1.0f);
     set (ampParamID (f.amp, "sustain"), f.ampSustain);
-    if (f.amp == distortion) set (ampParamID (f.amp, "drive"), f.ampDrive);
+    if (f.amp != clean) set (ampParamID (f.amp, "drive"), f.ampDrive);
 
     set ("gateOn", 1.0f);                 set ("gate", ampGateDb[f.amp]);
     set ("compOn", f.compOn ? 1.0f : 0.0f);   set ("sustain", f.sustain);
