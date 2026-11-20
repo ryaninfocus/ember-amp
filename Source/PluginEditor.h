@@ -215,6 +215,7 @@ private:
     std::unique_ptr<StreamOutput> stream;
     juce::ToggleButton streamSwitch { "STREAM" };
     juce::TextButton streamMoreButton;
+    juce::TextButton settingsButton { "SETTINGS" };   // audio device, save / load state
     bool streamWanted = false;
     juce::String streamError;
     juce::String streamStatusText() const;

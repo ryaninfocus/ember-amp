@@ -8,6 +8,9 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.1.4
+- Ember Amp now has a normal Mac / Windows window: the red close button (or Cmd+Q / Alt+F4) quits, and Audio Settings is under **SETTINGS** at the bottom right (and in the Mac menu bar).
+
 ## New in 1.1.3
 - Stream: pick any mic on your computer, and your guitar and voice both go to Discord.
 - Transpose stays on (or off) when you switch presets.
@@ -30,4 +33,4 @@ Ember Amp isn't registered with Apple or Microsoft, so your computer asks once:
 - **Mac:** if the installer won't open, go to **System Settings → Privacy & Security** and click **Open Anyway**.
 - **Windows:** if you see "Windows protected your PC", click **More info → Run anyway**.
 
-Then open **Options → Audio Settings** in Ember Amp and pick your audio interface.
+Then open **SETTINGS → Audio Settings** (bottom right) in Ember Amp and pick your audio interface.

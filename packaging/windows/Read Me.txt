@@ -10,7 +10,7 @@ INSTALL
 
 FIRST LAUNCH
 - Open Ember Amp from the Start menu.
-- Click "Options" (top left) > Audio Settings and pick your audio interface.
+- Click SETTINGS (bottom right) > Audio Settings and pick your audio interface.
   For the lowest delay, choose "Windows Audio (Exclusive Mode)" as the device type.
 - Pick which input your guitar is plugged into at the bottom of the window.
 

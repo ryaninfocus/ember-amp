@@ -1095,6 +1095,18 @@ EmberAmpEditor::EmberAmpEditor (EmberAmpProcessor& p)
             streamMoreButton.setTooltip ("Stream settings");
             streamMoreButton.onClick = [this] { showStreamPanel(); };
             addAndMakeVisible (streamMoreButton);
+
+            settingsButton.setTooltip ("Audio settings: your interface, inputs and outputs");
+            settingsButton.onClick = [this]
+            {
+                juce::PopupMenu m;
+                m.addItem ("Audio Settings...", [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->showAudioSettingsDialog(); });
+                m.addSeparator();
+                m.addItem ("Save Current State...", [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->askUserToSaveState(); });
+                m.addItem ("Load a Saved State...", [] { if (auto* h = juce::StandalonePluginHolder::getInstance()) h->askUserToLoadState(); });
+                m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (settingsButton));
+            };
+            addAndMakeVisible (settingsButton);
             if (auto* settings = holder->settings.get())
             {
                 stream->guitarGain = juce::Decibels::decibelsToGain ((float) settings->getDoubleValue ("emberStreamGuitarDb", 0.0));
@@ -1316,6 +1328,8 @@ void EmberAmpEditor::resized()
             streamSwitch.setBounds (sb.removeFromLeft (104));
             sb.removeFromLeft (4);
             streamMoreButton.setBounds (sb.removeFromLeft (34));
+            sb.removeFromLeft (16);
+            settingsButton.setBounds (sb.removeFromLeft (96));
         }
     }
 

@@ -13,7 +13,7 @@ INSTALL
 FIRST LAUNCH
 - Open Ember Amp from Applications (or search "Ember Amp" in Spotlight / Raycast).
 - Allow microphone access when asked - that's how the app hears your guitar.
-- Click "Options" (top left) > Audio Settings and pick your audio interface.
+- Click SETTINGS (bottom right) > Audio Settings and pick your audio interface.
 - Pick which input your guitar is plugged into at the bottom of the window.
 
 Works on Apple Silicon and Intel Macs, macOS 11 or newer.
