@@ -147,7 +147,7 @@ public:
 private:
     EmberAmpProcessor& proc;
     PedalUnit gatePedal, compPedal, odPedal, dsPedal, pitchPedal, chorusPedal, delayPedal, reverbPedal;
-    juce::Rectangle<int> ampSlot;
+    juce::Rectangle<int> ampSlot, row1, row2;
     int shownAmp = -1;
 };
 

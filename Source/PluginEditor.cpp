@@ -455,17 +455,26 @@ void EmberLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& b,
     {
         const auto c = r.getCentre();
         const float rad = jmin (r.getWidth(), r.getHeight()) * 0.40f;
-        // white sculpted footswitch: a ring, then the cap (pressed = slightly lower and darker)
-        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.5f), c.x, c.y + rad * 0.4f, Colours::transparentBlack, c.x, c.y + rad * 1.5f, true));
+        // silver footswitch: knurled ring, domed cap with a small emblem (pressed = slightly lower)
+        g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.55f), c.x, c.y + rad * 0.4f, Colours::transparentBlack, c.x, c.y + rad * 1.5f, true));
         g.fillEllipse (Rectangle<float> (rad * 2.6f, rad * 2.4f).withCentre (c.translated (0.0f, rad * 0.3f)));
-        g.setGradientFill (ColourGradient (Colour (0xffa9acb2), c.x, c.y + rad, Colour (0xfff4f5f6), c.x, c.y - rad, false));
+        g.setGradientFill (ColourGradient (Colour (0xffe9ebee), c.x - rad * 0.6f, c.y - rad, Colour (0xff6c6f75), c.x + rad * 0.6f, c.y + rad, false));
         g.fillEllipse (c.x - rad, c.y - rad, rad * 2.0f, rad * 2.0f);
+        g.setColour (Colours::black.withAlpha (0.25f));
+        for (int i = 0; i < 36; ++i)   // knurling
+        {
+            const float a = (float) i / 36.0f * MathConstants<float>::twoPi;
+            g.drawLine (c.x + rad * 0.80f * std::sin (a), c.y - rad * 0.80f * std::cos (a), c.x + rad * 0.98f * std::sin (a), c.y - rad * 0.98f * std::cos (a), 0.8f);
+        }
         const float ir = rad * (down ? 0.66f : 0.72f);
         const auto cc = c.translated (0.0f, down ? 1.0f : 0.0f);
-        g.setGradientFill (ColourGradient (Colour (0xfffcfcfd), cc.x - ir * 0.4f, cc.y - ir, Colour (highlighted ? 0xffd5d8dc : 0xffc8cbd0), cc.x + ir * 0.3f, cc.y + ir, false));
+        g.setGradientFill (ColourGradient (Colour (0xfffafbfc), cc.x - ir * 0.5f, cc.y - ir, Colour (highlighted ? 0xffb7bac0 : 0xffa4a7ad), cc.x + ir * 0.4f, cc.y + ir, false));
         g.fillEllipse (cc.x - ir, cc.y - ir, ir * 2.0f, ir * 2.0f);
-        g.setColour (Colours::black.withAlpha (0.18f));
+        g.setColour (Colours::black.withAlpha (0.3f));
         g.drawEllipse (cc.x - ir, cc.y - ir, ir * 2.0f, ir * 2.0f, 0.8f);
+        g.setColour (Colour (0xff3a3c42).withAlpha (0.8f));   // emblem
+        g.drawEllipse (Rectangle<float> (ir * 0.7f, ir * 0.7f).withCentre (cc), 1.2f);
+        g.fillEllipse (Rectangle<float> (ir * 0.22f, ir * 0.22f).withCentre (cc));
         return;
     }
 
@@ -1155,28 +1164,36 @@ void PedalUnit::refresh()
 void PedalUnit::paint (juce::Graphics& g)
 {
     using namespace juce;
-    auto r = getLocalBounds().toFloat().reduced (3.0f);
+    auto r = getLocalBounds().toFloat().reduced (2.0f, 1.0f);
     const bool on = footswitch.getToggleState();
-    // matte, softly coloured enclosure (the colour is muted, like powder coat)
-    const auto base = body.withSaturation (body.getSaturation() * 0.38f).withBrightness (on ? 0.50f : 0.36f);
-    const float corner = jmin (24.0f, r.getWidth() * 0.22f);
+    // metallic, softly tinted enclosure (graphite, taupe, slate, warm grey...)
+    const auto base = body.withSaturation (jmin (body.getSaturation(), 0.12f)).withBrightness (on ? 0.55f : 0.42f);
+    const float corner = r.getWidth() * 0.17f;
 
-    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.6f), r.getCentreX(), r.getBottom() - 10.0f, Colours::transparentBlack, r.getCentreX(), r.getBottom() + 16.0f, false));
-    g.fillRoundedRectangle (r.withY (r.getBottom() - 20.0f).withHeight (36.0f).reduced (6.0f, 0.0f), corner);
-    Path box; box.addRoundedRectangle (r, corner);
-    g.setGradientFill (ColourGradient (base.brighter (0.35f), r.getX(), r.getY(), base.darker (0.35f), r.getRight(), r.getBottom(), false));
-    g.fillPath (box);
-    // soft bevel: light rim on top / left, darker underside
-    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.30f), r.getX(), r.getY(), Colours::transparentWhite, r.getX(), r.getY() + 26.0f, false));
-    g.strokePath (box, PathStrokeType (2.0f));
-    g.setColour (Colours::black.withAlpha (0.45f));
-    g.drawRoundedRectangle (r.reduced (0.5f), corner, 1.0f);
+    // shadow on the board
+    g.setGradientFill (ColourGradient (Colours::black.withAlpha (0.65f), r.getCentreX(), r.getBottom() - 6.0f, Colours::transparentBlack, r.getCentreX(), r.getBottom() + 14.0f, false));
+    g.fillRoundedRectangle (r.withY (r.getBottom() - 16.0f).withHeight (30.0f).reduced (4.0f, 0.0f), corner);
 
-    // status LED at the top
-    const auto led = Rectangle<float> (6.0f, 6.0f).withCentre ({ r.getCentreX(), r.getY() + 16.0f });
+    // bevelled rim, then the face
+    Path shell; shell.addRoundedRectangle (r, corner);
+    g.setGradientFill (ColourGradient (base.brighter (0.55f), r.getX(), r.getY(), base.darker (0.55f), r.getRight(), r.getBottom(), false));
+    g.fillPath (shell);
+    const auto f = r.reduced (3.5f);
+    Path face; face.addRoundedRectangle (f, corner - 3.0f);
+    ColourGradient metal (base.brighter (0.12f), f.getX(), f.getY(), base.darker (0.18f), f.getX(), f.getBottom(), false);
+    metal.addColour (0.35, base.brighter (0.22f));   // a soft band of sheen
+    metal.addColour (0.55, base);
+    g.setGradientFill (metal);
+    g.fillPath (face);
+    fillTextured (g, face, tolexTexture(), 0.35f);       // fine powder-coat grain
+    g.setColour (Colours::black.withAlpha (0.55f));
+    g.strokePath (shell, PathStrokeType (1.0f));
+
+    // LED, top centre
+    const auto led = Rectangle<float> (6.0f, 6.0f).withCentre ({ r.getCentreX(), r.getY() + 13.0f });
     if (on)
     {
-        g.setGradientFill (ColourGradient (Colour (0xffff3b30).withAlpha (0.55f), led.getCentreX(), led.getCentreY(), Colour (0x00ff3b30), led.getCentreX() + 9.0f, led.getCentreY(), true));
+        g.setGradientFill (ColourGradient (Colour (0xffff3b30).withAlpha (0.6f), led.getCentreX(), led.getCentreY(), Colour (0x00ff3b30), led.getCentreX() + 9.0f, led.getCentreY(), true));
         g.fillEllipse (led.expanded (7.0f));
     }
     g.setColour (Colours::black.withAlpha (0.6f));
@@ -1184,31 +1201,34 @@ void PedalUnit::paint (juce::Graphics& g)
     g.setColour (on ? Colour (0xffff4a3a) : Colour (0xff3a1715));
     g.fillEllipse (led);
 
-    // name printed above the footswitch
-    g.setColour (Colours::white.withAlpha (on ? 0.95f : 0.6f));
-    g.setFont (spaced (11.5f, false, 0.32f));
-    g.drawFittedText (name.toUpperCase(), nameArea.toNearestInt(), Justification::centred, 1, 0.55f);
+    // name: big, spaced, lightly debossed
+    g.setFont (spaced (jmin (15.0f, r.getWidth() * 0.11f), true, 0.18f));
+    g.setColour (Colours::black.withAlpha (0.45f));
+    g.drawFittedText (name.toUpperCase(), nameArea.translated (0.0f, 1.0f).toNearestInt(), Justification::centred, 1, 0.5f);
+    g.setColour (Colours::white.withAlpha (on ? 0.92f : 0.62f));
+    g.drawFittedText (name.toUpperCase(), nameArea.toNearestInt(), Justification::centred, 1, 0.5f);
 }
 
 void PedalUnit::resized()
 {
-    auto r = getLocalBounds().reduced (8, 0);
-    r.removeFromTop (30);
-    footswitch.setBounds (r.removeFromBottom (92).withSizeKeepingCentre (72, 72));
-    nameArea = r.removeFromBottom (30).toFloat();
-    r.removeFromBottom (6);
-    // knobs: one centred; two side by side; three = two on top and one below (like a stompbox face)
+    auto r = getLocalBounds().reduced (6, 0);
+    r.removeFromTop (22);                                    // LED
+    const int fs = juce::jmin (54, r.getWidth() / 2);
+    footswitch.setBounds (r.removeFromBottom (fs + 14).withSizeKeepingCentre (fs, fs));
+    nameArea = r.removeFromBottom (24).toFloat();
+    r.removeFromBottom (2);
+    // knobs: one centred; two side by side; three = two on top and one below
     const int n = knobs.size();
-    const int rowH = juce::jmin (110, n == 3 ? r.getHeight() / 2 : r.getHeight());
+    const int rowH = n == 3 ? r.getHeight() / 2 : juce::jmin (r.getHeight(), 92);
     if (n == 1)
-        knobs[0]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (juce::jmin (r.getWidth(), 90), rowH));
+        knobs[0]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (juce::jmin (r.getWidth(), 86), rowH));
     else if (n >= 2)
     {
         auto top = r.removeFromTop (rowH);
         knobs[0]->setBounds (top.removeFromLeft (top.getWidth() / 2));
         knobs[1]->setBounds (top);
         if (n >= 3)
-            knobs[2]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (r.getWidth() / 2 + 10, rowH));
+            knobs[2]->setBounds (r.removeFromTop (rowH).withSizeKeepingCentre (r.getWidth() / 2 + 6, rowH));
     }
 }
 
@@ -1238,38 +1258,33 @@ void PedalsPage::refresh()
 void PedalsPage::paint (juce::Graphics& g)
 {
     using namespace juce;
-    auto r = getLocalBounds().toFloat();
-
-    // pedalboard: dark anodised rails
-    auto board = r.withTrimmedTop (30.0f).reduced (10.0f, 0.0f).withTrimmedBottom (8.0f);
+    // one pedalboard per row, with a cable line showing the signal path
+    for (auto [row, label] : { std::pair<Rectangle<int>, const char*> { row1, "BEFORE THE AMP" }, { row2, "AFTER THE AMP" } })
     {
-        Path b; b.addRoundedRectangle (board, 6.0f);
-        g.setGradientFill (ColourGradient (Colour (0xff17181b), board.getX(), board.getY(), Colour (0xff0b0b0d), board.getX(), board.getBottom(), false));
+        const auto rr = row.toFloat();
+        g.setColour (Palette::muted);
+        g.setFont (spaced (10.5f, true, 0.3f));
+        g.drawText (label, Rectangle<float> (rr.getX() + 6.0f, rr.getY() - 20.0f, 300.0f, 18.0f), Justification::centredLeft);
+        auto board = rr.withTrimmedTop (rr.getHeight() * 0.62f).expanded (0.0f, 6.0f);
+        Path b; b.addRoundedRectangle (board, 8.0f);
+        g.setGradientFill (ColourGradient (Colour (0xff1b1c20), board.getX(), board.getY(), Colour (0xff0b0b0d), board.getX(), board.getBottom(), false));
         g.fillPath (b);
         fillTextured (g, b, tolexTexture(), 0.7f);
+        g.setColour (Colours::white.withAlpha (0.06f));
+        g.drawHorizontalLine ((int) board.getY() + 1, board.getX() + 8.0f, board.getRight() - 8.0f);
         g.setColour (Colours::black);
         g.strokePath (b, PathStrokeType (1.0f));
-        // aluminium rails
-        for (float yy = board.getY() + 30.0f; yy < board.getBottom() - 20.0f; yy += 60.0f)
-        {
-            g.setColour (Colours::black.withAlpha (0.6f));
-            g.fillRect (board.getX() + 12.0f, yy + 1.0f, board.getWidth() - 24.0f, 8.0f);
-            g.setColour (Colours::white.withAlpha (0.035f));
-            g.fillRect (board.getX() + 12.0f, yy, board.getWidth() - 24.0f, 7.0f);
-        }
+        // patch cable through the row
+        g.setColour (Colour (0xff050506));
+        g.fillRoundedRectangle (rr.getX() + 10.0f, rr.getCentreY() - 2.0f, rr.getWidth() - 20.0f, 4.0f, 2.0f);
     }
-
-    g.setColour (Palette::muted);
-    g.setFont (spaced (11.0f, true, 0.3f));
-    g.drawText ("BEFORE THE AMP", Rectangle<float> (r.getX() + 14.0f, r.getY(), 400.0f, 22.0f), Justification::centredLeft);
-    g.drawText ("AFTER THE AMP", Rectangle<float> (r.getRight() - 414.0f, r.getY(), 400.0f, 22.0f), Justification::centredRight);
 
     const auto a = ampSlot.toFloat();
     const auto accent = EmberAmpEditor::ampAccent (proc.getSelectedAmp());
     g.setColour (Colour (0xff0d0e10));
-    g.fillRoundedRectangle (a, 4.0f);
+    g.fillRoundedRectangle (a, 10.0f);
     g.setColour (accent.withAlpha (0.7f));
-    g.drawRoundedRectangle (a.reduced (0.5f), 4.0f, 1.0f);
+    g.drawRoundedRectangle (a.reduced (0.5f), 10.0f, 1.2f);
     g.setColour (Palette::muted);
     g.setFont (spaced (10.0f, true, 0.3f));
     g.drawText ("AMP", a.withHeight (a.getHeight() * 0.5f - 6.0f), Justification::centredBottom);
@@ -1277,29 +1292,41 @@ void PedalsPage::paint (juce::Graphics& g)
     g.setFont (spaced (13.0f, true, 0.15f));
     g.drawFittedText (EmberAmpProcessor::ampName (proc.getSelectedAmp()).toUpperCase(), a.withTrimmedTop (a.getHeight() * 0.5f).toNearestInt().reduced (6, 0),
                       Justification::centredTop, 1);
-
-    g.setColour (Colour (0xff050506));
-    g.fillRect (board.getX() + 20.0f, board.getCentreY() - 1.5f, board.getWidth() - 40.0f, 3.0f);
 }
 
 void PedalsPage::resized()
 {
-    auto r = getLocalBounds().withTrimmedTop (30).reduced (28, 22);
-    const int gap = 12, slotW = 90;
-    const int pedalW = (r.getWidth() - slotW - 8 * gap) / 8;
-    for (auto* u : { &gatePedal, &compPedal, &odPedal, &dsPedal, &pitchPedal })
+    // two rows: 5 pedals before the amp, then the amp and 3 pedals after it.
+    // Pedals keep a compact stompbox shape (about 1.6 times as tall as wide).
+    auto r = getLocalBounds().reduced (24, 4);
+    const int rowGap = 26;
+    const int rowH = (r.getHeight() - rowGap - 20) / 2;
+    r.removeFromTop (20);
+    row1 = r.removeFromTop (rowH);
+    r.removeFromTop (rowGap);
+    row2 = r.removeFromTop (rowH);
+
+    const int pedalH = rowH - 6;
+    const int pedalW = juce::jmin (juce::roundToInt ((float) pedalH / 1.6f), (row1.getWidth() - 4 * 26) / 5);
+    const int gap = 26;
+    auto place = [&] (juce::Rectangle<int> row, std::initializer_list<juce::Component*> items, int extraLeft)
     {
-        u->setBounds (r.removeFromLeft (pedalW));
-        r.removeFromLeft (gap);
-    }
-    ampSlot = r.removeFromLeft (slotW).withSizeKeepingCentre (slotW, 110);
-    r.removeFromLeft (gap);
-    for (auto* u : { &chorusPedal, &delayPedal, &reverbPedal })
-    {
-        u->setBounds (r.removeFromLeft (pedalW));
-        r.removeFromLeft (gap);
-    }
+        const int n = (int) items.size();
+        const int total = n * pedalW + (n - 1) * gap + extraLeft;
+        auto x = row.getCentreX() - total / 2 + extraLeft;
+        for (auto* c : items)
+        {
+            c->setBounds (x, row.getY(), pedalW, pedalH);
+            x += pedalW + gap;
+        }
+        return row.getCentreX() - total / 2;
+    };
+    place (row1, { &gatePedal, &compPedal, &odPedal, &dsPedal, &pitchPedal }, 0);
+    const int slotW = 120;
+    const int left = place (row2, { &chorusPedal, &delayPedal, &reverbPedal }, slotW + gap);
+    ampSlot = juce::Rectangle<int> (left, row2.getY(), slotW, pedalH).withSizeKeepingCentre (slotW, 120);
 }
+
 
 //==============================================================================
 CabPage::CabPage (EmberAmpEditor& e, EmberAmpProcessor& p) : ed (e), proc (p)
