@@ -205,7 +205,7 @@ private:
 
 //==============================================================================
 /** The EQ page: a 4-band semi-parametric post EQ (plus low / high cut) as a rack unit, with its curve above. */
-class EqPage : public juce::Component
+class EqPage : public juce::Component, private juce::Timer
 {
 public:
     EqPage (EmberAmpProcessor&);
@@ -223,6 +223,7 @@ private:
     juce::Rectangle<float> plot;      // the graph inside curveArea
     int amp = -1, dragBand = -1;
     double topHz() const;
+    void timerCallback() override { if (isShowing()) refresh(); }   // 60 fps: the graph follows the knobs smoothly
     float xForHz (double hz) const;
     double hzForX (float x) const;
     float yForDb (float db) const;
@@ -235,7 +236,7 @@ public:
     void mouseDoubleClick (const juce::MouseEvent&) override;
     juce::Point<float> getHandleForTest (int b) const { return handleFor (b); }
 private:
-    float lastSig = 0.0f;
+    float shownVals[11] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
     bool shownOn = false;
 };
 

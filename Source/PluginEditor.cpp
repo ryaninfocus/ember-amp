@@ -1869,6 +1869,7 @@ EqPage::EqPage (EmberAmpProcessor& p) : proc (p)
     power.setTooltip ("Whole EQ on / off: the 4 bands and the low / high cut (after the amp and cab)");
     addAndMakeVisible (power);
     powerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "eqOn", power);
+    startTimerHz (60);
     refresh();
 }
 
@@ -1899,11 +1900,16 @@ void EqPage::refresh()
         power.repaint();
         repaint();
     }
-    // redraw the curve when any EQ setting moves
-    float sig = proc.apvts.getRawParameterValue ("eqOn")->load() * 7.0f;
-    for (auto* id : { "eqLowCut", "eqHighCut", "eqFreq1", "eqFreq2", "eqFreq3", "eqFreq4", "eqGain1", "eqGain2", "eqGain3", "eqGain4" })
-        sig = sig * 1.37f + proc.apvts.getRawParameterValue (id)->load();
-    if (sig != lastSig) { lastSig = sig; repaint (curveArea.expanded (4)); }
+    // redraw the curve the moment any EQ setting moves (compared one by one: even tiny moves count)
+    bool changed = false;
+    int idx = 0;
+    for (auto* id : { "eqOn", "eqLowCut", "eqHighCut", "eqFreq1", "eqFreq2", "eqFreq3", "eqFreq4", "eqGain1", "eqGain2", "eqGain3", "eqGain4" })
+    {
+        const float v = proc.apvts.getRawParameterValue (id)->load();
+        if (v != shownVals[idx]) { shownVals[idx] = v; changed = true; }
+        ++idx;
+    }
+    if (changed) repaint (curveArea.expanded (4));
 }
 
 void EqPage::paint (juce::Graphics& g)
