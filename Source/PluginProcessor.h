@@ -254,7 +254,8 @@ private:
     void updateCabMic (int amp, bool force);
 
     // post EQ (after the amp and cab): low cut, 4 semi-parametric bands, high cut
-    Biquad eqLowCut, eqHighCut, eqBand[4];
+    Biquad eqLowCut, eqLowCut2, eqHighCut, eqHighCut2, eqBand[4];   // cuts are 24 dB/oct (two stages each)
+    juce::SmoothedValue<float> lowCutWet, highCutWet;
     float eqLast[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
     juce::SmoothedValue<float> eqWet;
 
@@ -267,8 +268,13 @@ private:
 public:
     /** Response of the post EQ at a frequency, in dB (for the EQ page's curve). Message thread. */
     float getEqResponseDb (double hz) const;
-    static constexpr float eqBandMinHz[4] = { 40.0f, 150.0f, 600.0f, 2000.0f };
-    static constexpr float eqBandMaxHz[4] = { 500.0f, 2000.0f, 6000.0f, 12000.0f };
+    /** The cuts are off when parked at the ends (20 Hz / the top of the range), on once dragged in. */
+    bool lowCutEngaged() const;
+    bool highCutEngaged() const;
+    // every band (and both cuts) can go anywhere in the audible range
+    static constexpr float eqBandMinHz[4] = { 20.0f, 20.0f, 20.0f, 20.0f };
+    static constexpr float eqBandMaxHz[4] = { 20000.0f, 20000.0f, 20000.0f, 20000.0f };
+    static constexpr float eqMaxGainDb = 18.0f;
     static constexpr float eqBandDefHz[4] = { 100.0f, 500.0f, 2000.0f, 6000.0f };
 private:
 

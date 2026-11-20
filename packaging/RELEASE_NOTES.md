@@ -8,6 +8,10 @@
 
 No account or sign-in needed. Just download and install.
 
+## New in 1.4.7
+- **EQ:** one ON/OFF switch for the whole EQ. Every band and both cuts can go anywhere from 20 Hz to 20 kHz, with up to +-18 dB.
+- **Low and high cut:** drag the LC / HC handles in from the ends of the graph to switch them on (steep 24 dB/octave); drag back to the end or double-click to switch them off.
+
 ## New in 1.4
 - **CAB page:** a big view of the cabinet. Drag the mic anywhere on any speaker, scroll to move it closer or further (sideways scroll slides it across the cab), pick from 6 cabinets and 4 microphones.
 - **EQ page:** a 4-band semi-parametric post EQ with low and high cut, shown as a rack unit plus a curve you can drag.

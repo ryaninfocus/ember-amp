@@ -1852,7 +1852,7 @@ EqPage::EqPage (EmberAmpProcessor& p) : proc (p)
     power.getProperties().set ("topText", "ON");
     power.getProperties().set ("bottomText", "OFF");
     power.getProperties().set ("onIsTop", true);
-    power.setTooltip ("Post EQ on / off (after the amp and cab)");
+    power.setTooltip ("Whole EQ on / off: the 4 bands and the low / high cut (after the amp and cab)");
     addAndMakeVisible (power);
     powerAtt = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, "eqOn", power);
     refresh();
@@ -1911,7 +1911,7 @@ void EqPage::paint (juce::Graphics& g)
         g.setColour (Palette::muted);
         g.drawText (hz >= 1000.0 ? String ((int) (hz / 1000.0)) + "k" : String ((int) hz), Rectangle<float> (40.0f, 12.0f).withCentre ({ xFor (hz), plot.getBottom() + 8.0f }), Justification::centred);
     }
-    for (float db : { -12.0f, -6.0f, 0.0f, 6.0f, 12.0f })
+    for (float db : { -18.0f, -12.0f, -6.0f, 0.0f, 6.0f, 12.0f, 18.0f })
     {
         g.setColour (Colours::white.withAlpha (db == 0.0f ? 0.16f : 0.06f));
         g.drawHorizontalLine ((int) yFor (db), plot.getX(), plot.getRight());
@@ -1944,6 +1944,19 @@ void EqPage::paint (juce::Graphics& g)
         g.drawEllipse (Rectangle<float> (16.0f, 16.0f).withCentre (pt), b == dragBand ? 2.0f : 1.5f);
         g.setFont (spaced (9.0f, true, 0.0f));
         g.drawText (String (b + 1), Rectangle<float> (14.0f, 14.0f).withCentre (pt), Justification::centred);
+    }
+    // cut handles: faded while parked at the ends (off), solid once dragged in
+    for (int b = 4; b < 6; ++b)
+    {
+        const bool engaged = b == 4 ? proc.lowCutEngaged() : proc.highCutEngaged();
+        const auto pt = handleFor (b);
+        const auto box = Rectangle<float> (26.0f, 18.0f).withCentre (pt);
+        g.setColour (Colours::black.withAlpha (0.7f));
+        g.fillRoundedRectangle (box, 5.0f);
+        g.setColour ((b == dragBand ? Colours::white : curveCol).withAlpha (engaged ? 1.0f : 0.45f));
+        g.drawRoundedRectangle (box, 5.0f, b == dragBand ? 2.0f : 1.3f);
+        g.setFont (spaced (8.5f, true, 0.05f));
+        g.drawText (b == 4 ? "LC" : "HC", box, Justification::centred);
     }
     if (! on)
     {
@@ -2004,12 +2017,17 @@ void EqPage::paint (juce::Graphics& g)
 double EqPage::topHz() const             { return juce::jmin (20000.0, 0.49 * (proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000.0)); }
 float EqPage::xForHz (double hz) const   { return plot.getX() + plot.getWidth() * (float) (std::log (juce::jmax (20.0, hz) / 20.0) / std::log (topHz() / 20.0)); }
 double EqPage::hzForX (float x) const    { return 20.0 * std::pow (topHz() / 20.0, (double) juce::jlimit (0.0f, 1.0f, (x - plot.getX()) / plot.getWidth())); }
-float EqPage::yForDb (float db) const    { return juce::jmap (juce::jlimit (-15.0f, 15.0f, db), 15.0f, -15.0f, plot.getY(), plot.getBottom()); }
-float EqPage::dbForY (float y) const     { return juce::jmap (y, plot.getY(), plot.getBottom(), 15.0f, -15.0f); }
+float EqPage::yForDb (float db) const    { return juce::jmap (juce::jlimit (-21.0f, 21.0f, db), 21.0f, -21.0f, plot.getY(), plot.getBottom()); }
+float EqPage::dbForY (float y) const     { return juce::jmap (y, plot.getY(), plot.getBottom(), 21.0f, -21.0f); }
 
-// each band's handle sits on its own gain at its frequency
+// each band's handle sits on its own gain at its frequency; the cut handles ride along the bottom
 juce::Point<float> EqPage::handleFor (int b) const
 {
+    if (b >= 4)
+    {
+        const float hz = proc.apvts.getRawParameterValue (b == 4 ? "eqLowCut" : "eqHighCut")->load();
+        return { xForHz (juce::jlimit (20.0, topHz(), (double) hz)), yForDb (-15.0f) };
+    }
     const auto n = juce::String (b + 1);
     return { xForHz (proc.apvts.getRawParameterValue ("eqFreq" + n)->load()), yForDb (proc.apvts.getRawParameterValue ("eqGain" + n)->load()) };
 }
@@ -2020,20 +2038,17 @@ void EqPage::mouseDown (const juce::MouseEvent& e)
     // grab the nearest handle (or, if none is close, the band whose range the click is in)
     float best = 1.0e9f;
     dragBand = -1;
-    for (int b = 0; b < 4; ++b)
+    for (int b = 0; b < 6; ++b)
     {
-        const float d = e.position.getDistanceFrom (handleFor (b));
+        const float d = e.position.getDistanceFrom (handleFor (b)) * (b >= 4 ? 0.8f : 1.0f);   // cuts are easy to grab
         if (d < best) { best = d; dragBand = b; }
     }
-    if (best > 28.0f)
-    {
-        const double hz = hzForX (e.position.x);
-        for (int b = 0; b < 4; ++b)
-            if (hz >= EmberAmpProcessor::eqBandMinHz[b] && hz <= EmberAmpProcessor::eqBandMaxHz[b]) { dragBand = b; break; }
-    }
+    // (no handle near the click: the nearest one comes to you)
     if (dragBand < 0) return;
-    for (auto* id : { "eqFreq", "eqGain" })
-        if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->beginChangeGesture();
+    if (dragBand >= 4) { if (auto* prm = proc.apvts.getParameter (dragBand == 4 ? "eqLowCut" : "eqHighCut")) prm->beginChangeGesture(); }
+    else
+        for (auto* id : { "eqFreq", "eqGain" })
+            if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->beginChangeGesture();
     if (auto* on = proc.apvts.getParameter ("eqOn"); on != nullptr && on->getValue() < 0.5f)
         on->setValueNotifyingHost (1.0f);   // touching the graph switches the EQ on
     mouseDrag (e);
@@ -2042,25 +2057,43 @@ void EqPage::mouseDown (const juce::MouseEvent& e)
 void EqPage::mouseDrag (const juce::MouseEvent& e)
 {
     if (dragBand < 0) return;
+    if (dragBand >= 4)
+    {
+        // drag a cut in from its end to switch it on; back to the end = off
+        if (auto* f = proc.apvts.getParameter (dragBand == 4 ? "eqLowCut" : "eqHighCut"))
+        {
+            double hz = juce::jlimit (20.0, topHz(), hzForX (e.position.x));
+            if (dragBand == 5 && hz >= 0.98 * topHz()) hz = 20000.0;   // parked at the top = off
+            f->setValueNotifyingHost (f->convertTo0to1 ((float) hz));
+        }
+        refresh();
+        return;
+    }
     const auto n = juce::String (dragBand + 1);
     if (auto* f = proc.apvts.getParameter ("eqFreq" + n))
-        f->setValueNotifyingHost (f->convertTo0to1 ((float) juce::jlimit ((double) EmberAmpProcessor::eqBandMinHz[dragBand], (double) EmberAmpProcessor::eqBandMaxHz[dragBand], hzForX (e.position.x))));
+        f->setValueNotifyingHost (f->convertTo0to1 ((float) juce::jlimit (20.0, juce::jmin (20000.0, topHz()), hzForX (e.position.x))));
     if (auto* gn = proc.apvts.getParameter ("eqGain" + n))
-        gn->setValueNotifyingHost (gn->convertTo0to1 (juce::jlimit (-12.0f, 12.0f, dbForY (e.position.y))));
+        gn->setValueNotifyingHost (gn->convertTo0to1 (juce::jlimit (-EmberAmpProcessor::eqMaxGainDb, EmberAmpProcessor::eqMaxGainDb, dbForY (e.position.y))));
     refresh();
 }
 
 void EqPage::mouseUp (const juce::MouseEvent&)
 {
     if (dragBand < 0) return;
-    for (auto* id : { "eqFreq", "eqGain" })
-        if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->endChangeGesture();
+    if (dragBand >= 4) { if (auto* prm = proc.apvts.getParameter (dragBand == 4 ? "eqLowCut" : "eqHighCut")) prm->endChangeGesture(); }
+    else
+        for (auto* id : { "eqFreq", "eqGain" })
+            if (auto* prm = proc.apvts.getParameter (id + juce::String (dragBand + 1))) prm->endChangeGesture();
     dragBand = -1;
     repaint (curveArea.expanded (4));
 }
 
 void EqPage::mouseDoubleClick (const juce::MouseEvent& e)
 {
+    for (int b = 4; b < 6; ++b)   // double-click a cut: off
+        if (e.position.getDistanceFrom (handleFor (b)) < 16.0f)
+            if (auto* f = proc.apvts.getParameter (b == 4 ? "eqLowCut" : "eqHighCut"))
+                f->setValueNotifyingHost (f->convertTo0to1 (b == 4 ? 20.0f : 20000.0f));
     for (int b = 0; b < 4; ++b)
         if (e.position.getDistanceFrom (handleFor (b)) < 16.0f)
             if (auto* gn = proc.apvts.getParameter ("eqGain" + juce::String (b + 1)))
@@ -2084,9 +2117,10 @@ void EqPage::resized()
     auto topRow = inner.removeFromTop (inner.getHeight() / 2);
     for (int i = 0; i < 6; ++i)
         topKnobs[i]->setBounds (topRow.withX (inner.getX() + i * colW).withWidth (colW).reduced (6, 2));
-    // big gain knobs, each under its band's frequency knob
+    // big gain knobs, each under its band's frequency knob; the cut switches under the cut knobs
     for (int b = 0; b < 4; ++b)
         gainKnobs[b]->setBounds (inner.withX (inner.getX() + (b + 1) * colW).withWidth (colW).reduced (2, 0));
+
 }
 
 //==============================================================================

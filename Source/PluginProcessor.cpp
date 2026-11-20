@@ -565,16 +565,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout EmberAmpProcessor::createLay
         auto gdb = AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return (v > 0.05f ? "+" : "") + String (v, 1) + " dB"; });
         auto logRange = [] (float lo, float hi, float centre) { NormalisableRange<float> r (lo, hi, 1.0f); r.setSkewForCentre (centre); return r; };
         p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "eqOn", 1 }, "EQ On", false));
-        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqLowCut", 1 }, "EQ Low Cut", logRange (20.0f, 300.0f, 80.0f), 20.0f,
-                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v < 21.0f ? String ("Off") : String (roundToInt (v)) + " Hz"; })));
-        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqHighCut", 1 }, "EQ High Cut", logRange (2000.0f, 20000.0f, 7000.0f), 20000.0f,
-                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return v > 19900.0f ? String ("Off") : String (v / 1000.0f, 1) + " kHz"; })));
+        // low and high cut: off when parked at the ends, on as soon as they're moved in
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqLowCut", 1 }, "Low Cut", logRange (20.0f, 20000.0f, 632.0f), 20.0f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                         { return v < 21.0f ? String ("Off") : v >= 1000.0f ? String (v / 1000.0f, 2) + " kHz" : String (roundToInt (v)) + " Hz"; })));
+        p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqHighCut", 1 }, "High Cut", logRange (20.0f, 20000.0f, 632.0f), 20000.0f,
+                         AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                         { return v > 19900.0f ? String ("Off") : v >= 1000.0f ? String (v / 1000.0f, 2) + " kHz" : String (roundToInt (v)) + " Hz"; })));
         for (int b = 0; b < 4; ++b)
         {
             const auto num = String (b + 1);
             const float lo = EmberAmpProcessor::eqBandMinHz[b], hi = EmberAmpProcessor::eqBandMaxHz[b], def = EmberAmpProcessor::eqBandDefHz[b];
-            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqFreq" + num, 1 }, "EQ Band " + num + " Freq", logRange (lo, hi, def), def, hz));
-            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqGain" + num, 1 }, "EQ Band " + num + " Gain", NormalisableRange<float> (-12.0f, 12.0f, 0.1f), 0.0f, gdb));
+            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqFreq" + num, 1 }, "EQ Band " + num + " Freq", logRange (lo, hi, 632.0f), def, hz));
+            p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "eqGain" + num, 1 }, "EQ Band " + num + " Gain",
+                                                                NormalisableRange<float> (-EmberAmpProcessor::eqMaxGainDb, EmberAmpProcessor::eqMaxGainDb, 0.1f), 0.0f, gdb));
         }
     }
 
@@ -737,7 +741,11 @@ void EmberAmpProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     for (auto& c : irConvolution) { c.prepare (monoSpec); c.reset(); }
 
-    for (auto* b : { &eqLowCut, &eqHighCut, &eqBand[0], &eqBand[1], &eqBand[2], &eqBand[3] }) b->reset();
+    for (auto* b : { &eqLowCut, &eqLowCut2, &eqHighCut, &eqHighCut2, &eqBand[0], &eqBand[1], &eqBand[2], &eqBand[3] }) b->reset();
+    lowCutWet.reset (sampleRate, 0.03);
+    highCutWet.reset (sampleRate, 0.03);
+    lowCutWet.setCurrentAndTargetValue (lowCutEngaged() && pEqOn->load() > 0.5f ? 1.0f : 0.0f);
+    highCutWet.setCurrentAndTargetValue (highCutEngaged() && pEqOn->load() > 0.5f ? 1.0f : 0.0f);
     {
         int size = 1;
         while (size < (int) (sampleRate * 0.045) + 8) size <<= 1;
@@ -889,12 +897,22 @@ void EmberAmpProcessor::updateEq (bool force)
     bool changed = force;
     for (int i = 0; i < 10; ++i) if (v[i] != eqLast[i]) { changed = true; eqLast[i] = v[i]; }
     if (! changed) return;
-    eqLowCut.set  (Coeffs::makeHighPass (sr, juce::jmax (10.0f, v[0] < 21.0f ? 10.0f : v[0]), 0.707f));
-    eqHighCut.set (Coeffs::makeLowPass  (sr, juce::jmin (v[1], 0.45f * sr), 0.707f));
-    eqBand[0].set (Coeffs::makeLowShelf   (sr, v[2], 0.7f, dB (v[3])));
+    // 4th-order Butterworth: two stages with Q 0.54 and 1.31 (24 dB per octave)
+    eqLowCut.set   (Coeffs::makeHighPass (sr, juce::jmin (v[0], 0.45f * sr), 0.5412f));
+    eqLowCut2.set  (Coeffs::makeHighPass (sr, juce::jmin (v[0], 0.45f * sr), 1.3066f));
+    eqHighCut.set  (Coeffs::makeLowPass  (sr, juce::jmin (v[1], 0.45f * sr), 0.5412f));
+    eqHighCut2.set (Coeffs::makeLowPass  (sr, juce::jmin (v[1], 0.45f * sr), 1.3066f));
+    eqBand[0].set (Coeffs::makeLowShelf   (sr, juce::jmin (v[2], 0.4f * sr), 0.7f, dB (v[3])));
     eqBand[1].set (Coeffs::makePeakFilter (sr, juce::jmin (v[4], 0.45f * sr), 0.9f, dB (v[5])));
     eqBand[2].set (Coeffs::makePeakFilter (sr, juce::jmin (v[6], 0.45f * sr), 0.9f, dB (v[7])));
     eqBand[3].set (Coeffs::makeHighShelf  (sr, juce::jmin (v[8], 0.4f * sr), 0.7f, dB (v[9])));
+}
+
+bool EmberAmpProcessor::lowCutEngaged() const   { return pEqLowCut->load() > 21.0f; }
+bool EmberAmpProcessor::highCutEngaged() const
+{
+    const double top = juce::jmin (20000.0, 0.49 * (getSampleRate() > 0 ? getSampleRate() : 48000.0));
+    return pEqHighCut->load() < 0.98 * top;
 }
 
 float EmberAmpProcessor::getEqResponseDb (double hz) const
@@ -907,9 +925,17 @@ float EmberAmpProcessor::getEqResponseDb (double hz) const
         juce::dsp::IIR::Coefficients<float> co (c[0], c[1], c[2], c[3], c[4], c[5]);
         mag *= co.getMagnitudeForFrequency (hz, sr);
     };
-    if (lc >= 21.0f) add (Coeffs::makeHighPass (sr, lc, 0.707f));
-    if (hc <= 19900.0f) add (Coeffs::makeLowPass (sr, juce::jmin (hc, 0.45f * (float) sr), 0.707f));
-    add (Coeffs::makeLowShelf   (sr, pEqFreq[0]->load(), 0.7f, dB (pEqGain[0]->load())));
+    if (lowCutEngaged())
+    {
+        const float f = juce::jmin (lc, 0.45f * (float) sr);
+        add (Coeffs::makeHighPass (sr, f, 0.5412f)); add (Coeffs::makeHighPass (sr, f, 1.3066f));
+    }
+    if (highCutEngaged())
+    {
+        const float f = juce::jmin (hc, 0.45f * (float) sr);
+        add (Coeffs::makeLowPass (sr, f, 0.5412f)); add (Coeffs::makeLowPass (sr, f, 1.3066f));
+    }
+    add (Coeffs::makeLowShelf   (sr, juce::jmin (pEqFreq[0]->load(), 0.4f * (float) sr), 0.7f, dB (pEqGain[0]->load())));
     add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[1]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[1]->load())));
     add (Coeffs::makePeakFilter (sr, juce::jmin (pEqFreq[2]->load(), 0.45f * (float) sr), 0.9f, dB (pEqGain[2]->load())));
     add (Coeffs::makeHighShelf  (sr, juce::jmin (pEqFreq[3]->load(), 0.4f * (float) sr), 0.7f, dB (pEqGain[3]->load())));
@@ -1258,17 +1284,38 @@ void EmberAmpProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         x[i] = depth.process (x[i]) * ampVolume.getNextValue() * switchGain.getNextValue() * dynGain[(size_t) i];
 
     // ===== Post EQ (crossfaded in/out so switching it never clicks) =====
+    // low cut, the 4 bands, high cut: each fades in / out on its own switch
     eqWet.setTargetValue (pEqOn->load() > 0.5f ? 1.0f : 0.0f);
-    if (eqWet.isSmoothing() || eqWet.getTargetValue() > 0.0f)
+    // one switch for the whole EQ; each cut also needs to be dragged in from its end
+    const bool eqIsOn = pEqOn->load() > 0.5f;
+    lowCutWet.setTargetValue (eqIsOn && lowCutEngaged() ? 1.0f : 0.0f);
+    highCutWet.setTargetValue (eqIsOn && highCutEngaged() ? 1.0f : 0.0f);
+    const bool lcActive = lowCutWet.isSmoothing() || lowCutWet.getTargetValue() > 0.0f;
+    const bool hcActive = highCutWet.isSmoothing() || highCutWet.getTargetValue() > 0.0f;
+    const bool bandsActive = eqWet.isSmoothing() || eqWet.getTargetValue() > 0.0f;
+    if (lcActive || hcActive || bandsActive)
     {
         updateEq (false);
         for (int i = 0; i < n; ++i)
         {
-            float y = eqLowCut.process (x[i]);
-            for (auto& b : eqBand) y = b.process (y);
-            y = eqHighCut.process (y);
-            const float w = eqWet.getNextValue();
-            x[i] += w * (y - x[i]);
+            float y = x[i];
+            if (lcActive)
+            {
+                const float f = eqLowCut2.process (eqLowCut.process (y));
+                y += lowCutWet.getNextValue() * (f - y);
+            }
+            if (bandsActive)
+            {
+                float f = y;
+                for (auto& b : eqBand) f = b.process (f);
+                y += eqWet.getNextValue() * (f - y);
+            }
+            if (hcActive)
+            {
+                const float f = eqHighCut2.process (eqHighCut.process (y));
+                y += highCutWet.getNextValue() * (f - y);
+            }
+            x[i] = y;
         }
     }
 
