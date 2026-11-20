@@ -164,6 +164,8 @@ public:
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    juce::Point<float> getMicPointForTest() const       { return micPoint(); }
+    juce::Point<float> getSpeakerCentreForTest() const  { return speakerCentre(); }
 
 private:
     void bindToAmp (int amp);

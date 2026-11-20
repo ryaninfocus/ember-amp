@@ -1784,9 +1784,20 @@ void CabPage::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelD
     const float sideways = e.mods.isShiftDown() ? w.deltaY : w.deltaX;
     if (std::abs (sideways) > std::abs (e.mods.isShiftDown() ? 0.0f : w.deltaY))
     {
-        auto p = micPoint();
-        p.x = juce::jlimit ((float) cabView.getX() + 50.0f, (float) cabView.getRight() - 50.0f, p.x - sideways * speed * 260.0f);
-        placeMicAt (p, false);
+        // slide along the line through the centre of the cone the mic is on: in toward the centre,
+        // through it and out the other side (so it can never get stuck against the rim)
+        juce::Point<float> dir (std::cos (micAngle), std::sin (micAngle));
+        float t = juce::jlimit (0.0f, 1.0f, value ("micPos"));
+        if (dir.x < -0.001f || (std::abs (dir.x) <= 0.001f && dir.y < 0.0f)) { dir = -dir; t = -t; }   // dir points right (or down)
+        t = juce::jlimit (-1.0f, 1.0f, t - sideways * speed * 1.6f);
+        micAngle = t >= 0.0f ? std::atan2 (dir.y, dir.x) : std::atan2 (-dir.y, -dir.x);
+        if (auto* prm = param ("micPos"))
+        {
+            prm->beginChangeGesture();
+            prm->setValueNotifyingHost (prm->convertTo0to1 (std::abs (t)));
+            prm->endChangeGesture();
+        }
+        refresh();
         return;
     }
     // up / down: closer or further (the drawn mic glides there, see timerCallback)
